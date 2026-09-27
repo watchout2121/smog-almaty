@@ -1,0 +1,236 @@
+<title>СМОГ · Алматы 2049</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,200;0,300;0,400;0,500;0,600;1,300;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+[hidden]{display:none!important}
+:root{--ink:#04070b;--fg:#eef3f7;--muted:#a9b6c2;--blue:#58c8f0;--blue2:#8fd9f7;--red:#ff4a3d;--gold:#f2b54c;--panel:rgba(5,9,14,.62);--line:rgba(220,235,245,.28);color-scheme:dark}
+html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--fg);margin:0}
+body{font:400 17px/1.5 "Exo 2",system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;background:#000}
+.bars::before,.bars::after{content:"";position:fixed;left:0;right:0;height:6vh;pointer-events:none;z-index:1}
+.bars::before{top:0;background:linear-gradient(#000,rgba(0,0,0,0))}.bars::after{bottom:0;background:linear-gradient(rgba(0,0,0,0),#000)}
+button{font-family:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible{outline:1px solid var(--blue);outline-offset:3px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+/* HUD */
+#hud{position:fixed;left:28px;top:calc(24px + env(safe-area-inset-top,0px));z-index:5;pointer-events:none;display:grid;gap:6px}
+#who{display:flex;align-items:center;gap:12px}
+#ring{--c:#6fd8f2;width:16px;height:16px;border-radius:50%;border:3px solid var(--c);box-shadow:0 0 12px var(--c),inset 0 0 6px var(--c);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 22px var(--c),inset 0 0 8px var(--c)}}
+#whoName{font-weight:500;font-size:13px;letter-spacing:.32em;text-transform:uppercase}
+#stamp{font:400 12px/1.4 "IBM Plex Mono",monospace;color:var(--muted);letter-spacing:.04em;max-width:min(520px,70vw)}
+#inst{position:fixed;right:28px;top:calc(64px + env(safe-area-inset-top,0px));z-index:5;width:210px;pointer-events:none}
+#inst .l{display:flex;justify-content:space-between;font:500 11px "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--blue2)}
+#inst .b{height:3px;background:rgba(255,255,255,.15);margin-top:6px}#instBar{display:block;height:100%;background:linear-gradient(90deg,var(--blue),#f2c94c 60%,var(--red));width:10%;transition:width .6s}
+#ctrl{position:fixed;right:24px;top:calc(20px + env(safe-area-inset-top,0px));z-index:30;display:flex;gap:16px}
+#ctrl button{font:500 11px "Exo 2",system-ui,sans-serif;letter-spacing:.24em;color:var(--muted);padding:4px 0;border-bottom:1px solid transparent}
+#ctrl button:hover{color:var(--fg);border-color:var(--blue)}
+#toasts{position:fixed;right:28px;top:calc(110px + env(safe-area-inset-top,0px));z-index:6;display:grid;gap:8px;justify-items:end;pointer-events:none}
+.toast{display:flex;gap:10px;align-items:center;font:500 12px "Exo 2",system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;padding:8px 14px;background:var(--panel);border-right:2px solid var(--blue);animation:tin .4s ease both}
+.toast .arr{color:var(--blue)}.toast.down{border-color:var(--red)}.toast.down .arr{color:var(--red)}.toast.out{opacity:0;transform:translateX(20px);transition:.5s}
+@keyframes tin{from{opacity:0;transform:translateX(20px)}}
+/* subtitles */
+#sub{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(9vh + env(safe-area-inset-bottom,0px));width:min(920px,calc(100% - 48px));z-index:4;text-align:center;cursor:pointer;padding:10px 0}
+#spk{font:500 13px "Exo 2",system-ui,sans-serif;letter-spacing:.3em;text-transform:uppercase;margin-bottom:6px;text-shadow:0 1px 8px #000}
+#txt{font-size:clamp(17px,1.55vw,23px);line-height:1.5;text-shadow:0 2px 3px #000,0 0 22px rgba(0,0,0,.9);text-wrap:balance}
+#txt.in{animation:fin .45s ease both}@keyframes fin{from{opacity:0;transform:translateY(6px)}}
+#sub.narr #txt{font-style:italic;font-weight:300;color:#dfe7ee}
+#sub.sys #txt{font:500 clamp(12px,1vw,14px)/1.6 "IBM Plex Mono",monospace;color:var(--blue2);letter-spacing:.06em}
+#sub.sys #txt::before{content:"▸ "}
+#adv{margin-top:8px;font-size:11px;letter-spacing:.3em;color:var(--muted);animation:blink 1.6s infinite}@keyframes blink{50%{opacity:.25}}
+/* choices */
+#choices{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(8vh + env(safe-area-inset-bottom,0px));width:min(980px,calc(100% - 40px));z-index:7;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.ch{display:flex;align-items:center;gap:14px;text-align:left;padding:14px 18px;background:linear-gradient(90deg,rgba(6,12,18,.78),rgba(6,12,18,.5));border:1px solid var(--line);font-size:16px;line-height:1.35;transition:background .2s,border-color .2s,transform .2s;animation:cin .35s ease both}
+.ch:nth-child(2){animation-delay:.06s}.ch:nth-child(3){animation-delay:.12s}.ch:nth-child(4){animation-delay:.18s}
+@keyframes cin{from{opacity:0;transform:translateY(10px)}}
+.ch .k{flex:none;width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--line);font:500 12px "IBM Plex Mono",ui-monospace,monospace;color:var(--blue2)}
+.ch:hover{background:linear-gradient(90deg,rgba(88,200,240,.28),rgba(88,200,240,.08));border-color:var(--blue);transform:translateY(-2px)}
+.ch.locked{opacity:.38;cursor:not-allowed}.ch.locked:hover{transform:none;background:linear-gradient(90deg,rgba(6,12,18,.78),rgba(6,12,18,.5));border-color:var(--line)}
+#timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(8vh - 16px + env(safe-area-inset-bottom,0px));width:min(980px,calc(100% - 40px));height:3px;background:rgba(255,255,255,.12);z-index:7}
+#timer i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--red),#ffb3a8)}
+/* wall */
+#wall{position:fixed;inset:0;z-index:20;display:grid;place-items:center;cursor:pointer;--dmg:0;
+ background:repeating-linear-gradient(0deg,rgba(255,40,30,.10) 0 2px,transparent 2px 7px),repeating-linear-gradient(60deg,rgba(255,40,30,.14) 0 1px,transparent 1px 38px),repeating-linear-gradient(-60deg,rgba(255,40,30,.14) 0 1px,transparent 1px 38px),rgba(120,0,0,.42);backdrop-filter:blur(2px)}
+#wall .in{text-align:center;display:grid;gap:14px;z-index:2}
+#wallLabel{font:500 clamp(18px,2.4vw,30px) "IBM Plex Mono",monospace;letter-spacing:.14em;color:#ff8a80;text-shadow:0 0 18px #ff2a1a}
+#wall .hint{font:500 12px "Exo 2",system-ui,sans-serif;letter-spacing:.3em;color:#ffd0cc}
+#wallCount{font:500 14px "IBM Plex Mono",ui-monospace,monospace;color:#fff}
+#wall .tb{width:min(420px,70vw);height:3px;background:rgba(255,255,255,.2);margin:0 auto}#wallTime{display:block;height:100%;background:#fff}
+#cracks{position:absolute;inset:0;width:100%;height:100%;z-index:1}#cracks path{fill:none;stroke:#fff;stroke-width:.25;opacity:.85;filter:drop-shadow(0 0 1px #ff6a5a)}
+#wall.shake{animation:shk .12s}@keyframes shk{25%{transform:translate(4px,-3px)}75%{transform:translate(-4px,3px)}}
+#wall.broken{animation:brk .7s ease forwards}@keyframes brk{to{opacity:0;transform:scale(1.25);filter:blur(6px)}}
+/* qte */
+#qte{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;display:grid;justify-items:center;gap:14px}
+#qte .rw{position:relative;width:130px;height:130px}
+#qte svg{position:absolute;inset:0;transform:rotate(-90deg)}
+#qte circle{fill:none;stroke-width:3}#qte .bg{stroke:rgba(255,255,255,.2)}#qRing{stroke:#fff;stroke-dasharray:314;stroke-dashoffset:0}
+#qKey{position:absolute;inset:18px;border-radius:50%;background:rgba(6,12,18,.75);border:1px solid var(--line);display:grid;place-items:center;font:500 26px "Exo 2",system-ui,sans-serif;letter-spacing:.08em}
+#qLabel{font:500 13px "Exo 2",system-ui,sans-serif;letter-spacing:.28em;text-transform:uppercase;text-shadow:0 2px 8px #000}
+#qte.ok #qKey{border-color:var(--blue);box-shadow:0 0 30px var(--blue)}#qte.bad #qKey{border-color:var(--red);box-shadow:0 0 30px var(--red)}
+/* investigation */
+#inv{position:fixed;inset:0;z-index:8}
+.invPrompt{position:absolute;left:50%;transform:translateX(-50%);top:calc(96px + env(safe-area-inset-top,0px));width:min(640px,calc(100% - 40px));text-align:center;font:400 14px "IBM Plex Mono",ui-monospace,monospace;color:var(--blue2);letter-spacing:.04em;text-shadow:0 2px 6px #000}
+.invPanel{position:absolute;right:28px;bottom:calc(10vh + env(safe-area-inset-bottom,0px));display:grid;gap:4px;padding:12px 16px;background:var(--panel);border-left:2px solid var(--gold);font:500 12px "Exo 2",system-ui,sans-serif;letter-spacing:.24em}
+.invPanel span{font:500 20px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:0}
+.spot{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:10px;animation:cin .4s ease both}
+.spot i{width:18px;height:18px;transform:rotate(45deg);border:2px solid var(--gold);background:rgba(242,181,76,.18);box-shadow:0 0 14px rgba(242,181,76,.8);animation:pulse2 1.6s infinite}
+@keyframes pulse2{50%{box-shadow:0 0 26px rgba(242,181,76,1)}}
+.spot span{font:500 12px "Exo 2",system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;padding:4px 8px;background:rgba(0,0,0,.55)}
+.spot.seen i{border-color:var(--blue);background:rgba(88,200,240,.35);box-shadow:none;animation:none}.spot.seen span{color:var(--muted)}
+.spot.exit i{border-color:var(--blue);border-radius:50%;transform:none;box-shadow:0 0 16px var(--blue)}.spot.locked{opacity:.45;cursor:not-allowed}
+.invExit{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(9vh + env(safe-area-inset-bottom,0px));padding:12px 22px;border:1px solid var(--line);background:var(--panel);font:500 13px "Exo 2",system-ui,sans-serif;letter-spacing:.24em;text-transform:uppercase}
+.invExit:hover{border-color:var(--blue)}
+/* chapter card */
+#card{position:fixed;inset:0;z-index:25;background:#000;display:grid;place-items:center;text-align:center;opacity:0;cursor:pointer}
+#card.in{animation:cardIn .9s ease forwards}#card.out{animation:cardOut .6s ease forwards}
+@keyframes cardIn{to{opacity:1}}@keyframes cardOut{from{opacity:1}to{opacity:0}}
+#cardN{font:500 13px "Exo 2",system-ui,sans-serif;letter-spacing:.6em;color:var(--blue)}
+#cardT{font:200 clamp(40px,7vw,96px)/1.05 "Exo 2",system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;margin:14px 0 18px;padding-left:.2em}
+#cardW{font:400 14px "Exo 2",system-ui,sans-serif;letter-spacing:.4em;text-transform:uppercase;color:var(--fg)}
+#cardS{font:400 12px "IBM Plex Mono",ui-monospace,monospace;color:var(--muted);margin-top:26px;padding:0 20px}
+#card .line{width:60px;height:1px;background:var(--blue);margin:22px auto 0}
+/* flowchart */
+#flow{position:fixed;inset:0;z-index:24;background:radial-gradient(ellipse at 50% 20%,#eef2f6,#c9d2db);color:#16202a;overflow:auto;padding-block:calc(40px + env(safe-area-inset-top,0px)) 40px}
+#flow .wrap{width:min(920px,calc(100% - 40px));margin:0 auto;display:grid;gap:22px}
+#flowTitle{font:300 clamp(22px,3vw,34px) "Exo 2",system-ui,sans-serif;letter-spacing:.28em;text-align:center}
+#flowPct{font:500 12px "IBM Plex Mono",ui-monospace,monospace;text-align:center;color:#51606e}
+#flowBody{display:grid;gap:0;position:relative}
+.frow{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(22,32,42,.12)}
+.flab{font:500 11px "Exo 2",system-ui,sans-serif;letter-spacing:.24em;text-transform:uppercase;color:#51606e;text-align:right}
+.fnodes{display:flex;flex-wrap:wrap;gap:10px}
+.fnode{min-width:110px;padding:10px 14px;font:500 13px "Exo 2",system-ui,sans-serif;text-align:center;border:1px solid #9aa8b5;background:#f4f7f9;color:#34414d;position:relative}
+.fnode.taken{background:#123047;color:#fff;border-color:#123047;box-shadow:0 0 0 3px rgba(88,200,240,.45)}
+.fnode.taken::after{content:"";position:absolute;left:50%;bottom:-16px;width:1px;height:14px;background:#123047}
+.fnode.lock{border-style:dashed;color:#9aa8b5;background:transparent}
+#flowGo{justify-self:center;padding:14px 34px;border:1px solid #123047;font:500 13px "Exo 2",system-ui,sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#123047}
+#flowGo:hover{background:#123047;color:#fff}
+/* menu */
+#menu{position:fixed;inset:0;z-index:15;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:end;padding:0 max(28px,5vw) calc(8vh + env(safe-area-inset-bottom,0px));gap:30px;background:linear-gradient(90deg,rgba(2,4,8,.8),rgba(2,4,8,.15) 60%,rgba(2,4,8,0))}
+.brand h1{font:200 clamp(52px,min(11vw,15vh),150px)/.9 "Exo 2",system-ui,sans-serif;letter-spacing:.28em;margin:0;text-shadow:0 0 40px rgba(88,200,240,.35)}
+.brand .sub{font:400 13px "Exo 2",system-ui,sans-serif;letter-spacing:.6em;color:var(--blue2);margin:18px 0 30px}
+.mnu{display:grid;gap:4px;justify-items:start}
+.mnu button{font:300 clamp(17px,3.4vh,22px) "Exo 2",system-ui,sans-serif;letter-spacing:.24em;text-transform:uppercase;padding:8px 0;color:#dfe7ee;position:relative;transition:color .2s,padding .2s}
+.mnu button::before{content:"";position:absolute;left:-22px;top:50%;width:0;height:1px;background:var(--blue);transition:width .2s}
+.mnu button:hover{color:#fff;padding-left:10px}.mnu button:hover::before{width:18px}
+.fine{font:400 11px "IBM Plex Mono",ui-monospace,monospace;color:#7f8c98;margin-top:22px;max-width:52ch}
+.ana{margin-top:30px;width:min(400px,100%);display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;padding:18px 20px;background:rgba(10,8,20,.5);border-left:1px solid rgba(233,220,255,.5)}
+.ana .av{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,#c9b6ff 40%,#5a4a9a 75%,transparent 76%);box-shadow:0 0 22px rgba(201,182,255,.6)}
+.ana b{display:block;font:500 12px "Exo 2",system-ui,sans-serif;letter-spacing:.32em;color:#e9dcff;margin-bottom:6px}
+#anaTxt{font:300 15px/1.45 "Exo 2",system-ui,sans-serif;color:#ece6ff;min-height:2.9em}
+/* chapters */
+#chapters,#ending{position:fixed;inset:0;z-index:18;background:rgba(3,6,10,.86);backdrop-filter:blur(6px);overflow:auto;padding-block:calc(70px + env(safe-area-inset-top,0px)) 50px}
+.sec{width:min(1040px,calc(100% - 40px));margin:0 auto}
+.sec h2{font:300 28px "Exo 2",system-ui,sans-serif;letter-spacing:.3em;margin:0 0 24px}
+#chList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.chap{display:grid;gap:6px;text-align:left;padding:18px;border:1px solid var(--line);background:rgba(8,14,20,.6);min-height:110px;align-content:start}
+.chap i{font:500 11px "Exo 2",system-ui,sans-serif;letter-spacing:.3em;color:var(--blue);font-style:normal}.chap b{font:300 24px "Exo 2",system-ui,sans-serif;letter-spacing:.06em}.chap span{font:400 12px "IBM Plex Mono",ui-monospace,monospace;color:var(--muted)}
+.chap:hover{border-color:var(--blue)}.chap.locked{opacity:.35;cursor:not-allowed}
+#endList{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:14px}
+.endi{padding:14px;border:1px solid var(--line)}.endi b{display:block;font:500 15px "Exo 2",system-ui,sans-serif;letter-spacing:.1em}.endi span{font-size:13px;color:var(--muted)}.endi.locked b{color:#56626e}
+.back{margin-top:30px;font:500 13px "Exo 2",system-ui,sans-serif;letter-spacing:.3em;border-bottom:1px solid var(--blue);padding:6px 0}
+#ending .sec{max-width:760px}
+#endT{font:200 clamp(44px,8vw,96px)/1 "Exo 2",system-ui,sans-serif;letter-spacing:.24em;margin:0}
+#endS{font:400 16px "Exo 2",system-ui,sans-serif;color:var(--blue2);letter-spacing:.06em;margin:16px 0 28px}
+#endL p{font-size:17px;line-height:1.6;margin:0 0 14px;max-width:62ch;color:#dfe7ee}
+#endChars{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0}
+.cst{padding:10px 14px;border:1px solid var(--line);display:grid;gap:2px}.cst b{font:500 12px "Exo 2",system-ui,sans-serif;letter-spacing:.24em;text-transform:uppercase}.cst span{font:400 12px "IBM Plex Mono",ui-monospace,monospace;color:var(--blue2)}
+.cst.dead{border-color:rgba(255,74,61,.5)}.cst.dead span{color:var(--red)}
+#endCount{font:400 12px "IBM Plex Mono",ui-monospace,monospace;color:var(--muted)}
+/* settings + loading */
+#settings{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(3,6,10,.7);backdrop-filter:blur(8px)}
+.setBox{width:min(520px,calc(100% - 32px));padding:28px 30px 24px;background:rgba(7,12,18,.92);border:1px solid var(--line);border-top:2px solid var(--blue);display:grid;gap:18px}
+.setBox h3{margin:0;font:300 22px "Exo 2",system-ui,sans-serif;letter-spacing:.34em}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) 150px 42px;align-items:center;gap:14px;font:400 14px "Exo 2",system-ui,sans-serif;letter-spacing:.06em;color:#dfe7ee}
+.srow output{font:400 12px "IBM Plex Mono",ui-monospace,monospace;color:var(--blue2);text-align:right}
+.srow input[type=range]{width:100%;accent-color:var(--blue);height:22px;background:transparent}
+.srow select{grid-column:2 / 4;background:#0b1219;color:#eef3f7;border:1px solid var(--line);padding:7px 8px;font:400 13px "Exo 2",system-ui,sans-serif}
+.setNote{font:400 11px/1.55 "IBM Plex Mono",ui-monospace,monospace;color:#7f8c98;margin:0}
+#setClose{justify-self:end;padding:10px 26px;border:1px solid var(--blue);font:500 12px "Exo 2",system-ui,sans-serif;letter-spacing:.3em;color:#eef3f7}
+#setClose:hover{background:rgba(88,200,240,.18)}
+#loading{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:#030508;transition:opacity .9s}
+#loading.done{opacity:0;pointer-events:none}
+#loading .lw{display:grid;gap:14px;justify-items:center;text-align:center}
+#loading .lt{font:200 42px "Exo 2",system-ui,sans-serif;letter-spacing:.4em;padding-left:.4em}
+#loading .lb{width:min(320px,70vw);height:2px;background:rgba(255,255,255,.12);overflow:hidden}
+#loading .lb i{display:block;height:100%;width:0;background:var(--blue);box-shadow:0 0 12px var(--blue);transition:width .3s}
+#loading .ls{font:400 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.24em;color:var(--muted)}
+/* управление героем: HUD прогулки */
+#walk{position:fixed;inset:0;z-index:3;pointer-events:none}
+#wObj{position:fixed;left:28px;top:calc(96px + env(safe-area-inset-top,0px));display:grid;gap:7px;max-width:min(380px,62vw);transition:opacity .3s}
+#wObj .wt{font:500 11px "Exo 2",system-ui,sans-serif;letter-spacing:.34em;text-transform:uppercase;color:var(--gold);margin-bottom:2px;text-shadow:0 1px 6px #000}
+#wObj .wo{display:flex;gap:11px;align-items:center;font:400 14px/1.3 "Exo 2",system-ui,sans-serif;color:#e8eef3;text-shadow:0 1px 6px #000,0 0 14px rgba(0,0,0,.8)}
+#wObj .wo i{flex:none;width:9px;height:9px;border:1.5px solid var(--blue);transform:rotate(45deg)}
+#wObj .wo.ok{color:#8d9aa6;text-decoration:line-through;text-decoration-color:rgba(141,154,166,.6)}#wObj .wo.ok i{background:var(--blue)}
+#wObj .wo.go i{border-color:var(--gold);background:rgba(242,181,76,.4);box-shadow:0 0 10px rgba(242,181,76,.7)}
+#wHint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(3vh + env(safe-area-inset-bottom,0px));font:400 12px "IBM Plex Mono",monospace;color:#c9d4dd;letter-spacing:.05em;padding:7px 14px;background:rgba(5,9,14,.6);border:1px solid rgba(220,235,245,.14);transition:opacity 1.2s;max-width:calc(100% - 32px);text-align:center}
+#wHint.out{opacity:0}
+#wGoal{position:fixed;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:5px}
+#wGoal i{width:14px;height:14px;border:2px solid var(--gold);transform:rotate(45deg);box-shadow:0 0 14px rgba(242,181,76,.9);animation:pulse2 1.6s infinite}
+#wGoal span{font:500 11px "IBM Plex Mono",monospace;color:var(--gold);text-shadow:0 1px 4px #000;padding:1px 6px;background:rgba(5,9,14,.5)}
+#wGoal.edge i{background:rgba(242,181,76,.45)}
+#wPrompt{position:fixed;transform:translate(-50%,-150%);display:flex;align-items:center;gap:9px;pointer-events:auto;padding:6px 13px 6px 6px;background:rgba(5,9,14,.78);border:1px solid rgba(88,200,240,.45);font:500 12px "Exo 2",system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;animation:cin .22s ease both;box-shadow:0 0 18px rgba(0,0,0,.5)}
+#wPrompt b{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--blue);color:var(--blue2);font:500 12px "IBM Plex Mono",monospace}
+#wMap{position:fixed;right:24px;bottom:calc(22px + env(safe-area-inset-bottom,0px));width:176px;height:176px;border-radius:50%;opacity:.94;transition:opacity .3s}
+#wJoy{position:fixed;width:120px;height:120px;border-radius:50%;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.05)}
+#wJoy i{position:absolute;left:40px;top:40px;width:40px;height:40px;border-radius:50%;background:rgba(88,200,240,.5)}
+#wAct{position:fixed;right:26px;bottom:calc(214px + env(safe-area-inset-bottom,0px));width:66px;height:66px;border-radius:50%;border:1px solid var(--blue);background:rgba(5,9,14,.65);font:500 20px "Exo 2",system-ui,sans-serif;pointer-events:auto;color:var(--blue2)}
+#wToast{position:fixed;left:50%;top:24%;transform:translateX(-50%);font:500 13px "Exo 2",system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;padding:9px 18px;background:rgba(5,9,14,.75);border-left:2px solid var(--gold);transition:opacity .5s}
+#wToast.out{opacity:0}
+.wMark{position:fixed;transform:translate(-50%,-50%);pointer-events:none;transition:opacity .25s}
+.wMark i{display:block;width:11px;height:11px;transform:rotate(45deg);border:2px solid rgba(233,220,255,.9);background:rgba(233,220,255,.15);box-shadow:0 0 10px rgba(233,220,255,.55)}
+.wMark.clue i{border-color:var(--gold);background:rgba(242,181,76,.25);box-shadow:0 0 12px rgba(242,181,76,.85);animation:pulse2 1.6s infinite}
+.wMark.npc i{border-radius:50%;transform:none;border-color:var(--blue2);background:rgba(88,200,240,.22);box-shadow:0 0 10px rgba(88,200,240,.6)}
+#walk.talking #wObj,#walk.talking #wMap,#walk.talking .wMark,#walk.talking #wGoal{opacity:.15}
+#bark{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(13vh + env(safe-area-inset-bottom,0px));width:min(780px,calc(100% - 40px));text-align:center;z-index:5;pointer-events:none;animation:fin .35s ease both}
+#bark b{display:block;font:500 12px "Exo 2",system-ui,sans-serif;letter-spacing:.3em;text-transform:uppercase;margin-bottom:4px;text-shadow:0 1px 8px #000}
+#bark span{font-size:clamp(15px,1.35vw,20px);line-height:1.45;text-shadow:0 2px 3px #000,0 0 18px rgba(0,0,0,.95)}
+#bark.narr span{font-style:italic;font-weight:300;color:#dfe7ee}#bark.sys span{font:500 13px/1.6 "IBM Plex Mono",monospace;color:var(--blue2)}#bark.sys span::before{content:"▸ "}
+@media (max-width:760px){#wObj{left:16px;top:calc(84px + env(safe-area-inset-top,0px));max-width:70vw}#wObj .wo{font-size:13px}#wMap{width:118px;height:118px;right:14px;top:calc(96px + env(safe-area-inset-top,0px));bottom:auto}#wAct{bottom:calc(40px + env(safe-area-inset-bottom,0px))}#bark{bottom:calc(20vh + env(safe-area-inset-bottom,0px))}}
+@media (max-height:620px){.brand .sub{margin:10px 0 16px}.ana{margin-top:14px;padding:10px 14px}.fine{margin-top:12px}.mnu button{padding:5px 0}}
+@media (max-width:760px){.srow{grid-template-columns:1fr 110px 36px}}
+@media (max-width:760px){#choices{grid-template-columns:1fr;gap:8px}.ch{padding:11px 14px;font-size:15px}#menu{grid-template-columns:1fr;align-items:end}.ana{justify-self:start}#chList{grid-template-columns:1fr 1fr}.frow{grid-template-columns:1fr}.flab{text-align:left}#hud{left:16px}#inst{right:16px;width:150px}#ctrl{right:16px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition:none!important}}
+</style>
+
+<canvas id="gl"></canvas>
+<div class="bars"></div>
+<div id="hud"><div id="who" hidden><span id="ring"></span><span id="whoName"></span></div><div id="stamp"></div></div>
+<div id="inst" hidden><div class="l"><span>НЕСТАБИЛЬНОСТЬ ПО</span><span id="instV">10%</span></div><div class="b"><i id="instBar"></i></div></div>
+<div id="ctrl"><button id="snd" type="button">ЗВУК ВКЛ</button><button id="setBtn" type="button">НАСТРОЙКИ</button><button id="toMenu" type="button">МЕНЮ</button></div>
+<div id="toasts"></div>
+<div id="sub" hidden><div id="spk"></div><div id="txt"></div><div id="adv" hidden>ПРОБЕЛ · КЛИК</div></div>
+<div id="bark" hidden><b></b><span></span></div>
+<div id="choices" hidden></div>
+<div id="timer" hidden><i></i></div>
+<div id="wall" hidden><svg id="cracks" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div class="in"><div id="wallLabel"></div><div class="hint">ЖМИТЕ ПРОБЕЛ ИЛИ КЛИКАЙТЕ, ЧТОБЫ СЛОМАТЬ</div><div id="wallCount"></div><div class="tb"><i id="wallTime"></i></div></div></div>
+<div id="qte" hidden><div class="rw"><svg viewBox="0 0 130 130"><circle class="bg" cx="65" cy="65" r="50"/><circle id="qRing" cx="65" cy="65" r="50"/></svg><button id="qKey" type="button"></button></div><div id="qLabel"></div></div>
+<div id="inv" hidden></div>
+<div id="card" hidden><div><div id="cardN"></div><div id="cardT"></div><div id="cardW"></div><div class="line"></div><div id="cardS"></div></div></div>
+<div id="flow" hidden><div class="wrap"><div id="flowTitle"></div><div id="flowPct"></div><div id="flowBody"></div><button id="flowGo" type="button">Продолжить</button></div></div>
+<div id="menu">
+  <div class="brand">
+    <h1>СМОГ</h1>
+    <div class="sub">АЛМАТЫ · 2049</div>
+    <div class="mnu">
+      <button id="bCont" type="button" hidden>Продолжить</button>
+      <button id="bNew" type="button">Новая игра</button>
+      <button id="bChap" type="button">Главы и концовки</button>
+      <button id="bSet" type="button">Настройки</button>
+    </div>
+    <div class="ana"><span class="av"></span><div><b>ЕВА</b><div id="anaTxt"></div></div></div>
+    <p class="fine">Интерактивная драма о смоге, пробках и выборе. Три героя, шесть глав, пять концовок. Настоящая карта центра Алматы. Все персонажи и компании вымышлены. Лучше играть в наушниках.<br>Карта © участники OpenStreetMap (ODbL) · модели: Mixamo, Ready Player Me, Kenney (CC0) · окружения: Poly Haven (CC0) · рендер: three.js</p>
+  </div>
+</div>
+<div id="chapters" hidden><div class="sec"><h2>ГЛАВЫ</h2><div id="chList"></div><h2 style="margin-top:44px">КОНЦОВКИ</h2><div id="endList"></div><button class="back" id="chBack" type="button">НАЗАД</button></div></div>
+<div id="ending" hidden><div class="sec"><div style="font:500 12px 'Exo 2',system-ui,sans-serif;letter-spacing:.5em;color:var(--blue)">КОНЦОВКА</div><h2 id="endT"></h2><div id="endS"></div><div id="endL"></div><div id="endChars"></div><div id="endCount"></div><button class="back" id="endMenu" type="button">В МЕНЮ</button></div></div>
+<div id="settings" hidden><div class="setBox" role="dialog" aria-label="Настройки">
+ <h3>НАСТРОЙКИ</h3>
+ <label class="srow">Общая громкость<input type="range" id="vMaster" min="0" max="100" step="1"><output id="oMaster"></output></label>
+ <label class="srow">Музыка<input type="range" id="vMusic" min="0" max="100" step="1"><output id="oMusic"></output></label>
+ <label class="srow">Эффекты и окружение<input type="range" id="vSfx" min="0" max="100" step="1"><output id="oSfx"></output></label>
+ <label class="srow">Качество графики<select id="qSel"><option value="auto">Авто (подстраивается)</option><option value="high">Высокое</option><option value="medium">Среднее</option><option value="low">Низкое</option></select></label>
+ <p class="setNote" id="qNote"></p>
+ <p class="setNote">Высокое: тени 2048, сглаживание MSAA, мягкие тени SSAO, отражения, глубина резкости. Если кадр тормозит, режим «Авто» сам снизит качество (кроме моментов, когда вы управляете героем).</p>
+ <button id="setClose" type="button">ГОТОВО</button>
+</div></div>
+<div id="loading"><div class="lw"><div class="lt">СМОГ</div><div class="lb"><i id="loadBar"></i></div><div class="ls" id="loadTxt">ЗАГРУЗКА МОДЕЛЕЙ И ОСВЕЩЕНИЯ</div></div></div>

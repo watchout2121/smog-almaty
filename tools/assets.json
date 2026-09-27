@@ -1,0 +1,7 @@
+{
+ "rpm": "assets/models/rpm.glb", "xbot": "assets/models/xbot.glb", "soldier": "assets/models/soldier.glb", "night": "assets/env/night.hdr",
+ "interior": "assets/env/interior.hdr", "dawn": "assets/env/dawn.hdr", "day": "assets/env/day.hdr", "waterN": "assets/tex/waternormals.jpg",
+ "flare0": "assets/tex/flare0.png", "flare3": "assets/tex/flare3.png", "geo": "assets/geo/almaty.json", "car_sedan": "assets/models/cars/sedan.glb",
+ "car_sedan_sports": "assets/models/cars/sedan-sports.glb", "car_hatchback_sports": "assets/models/cars/hatchback-sports.glb", "car_suv": "assets/models/cars/suv.glb", "car_suv_luxury": "assets/models/cars/suv-luxury.glb",
+ "car_taxi": "assets/models/cars/taxi.glb", "car_van": "assets/models/cars/van.glb", "car_delivery": "assets/models/cars/delivery.glb"
+}
