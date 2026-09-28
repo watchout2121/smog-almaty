@@ -1,4 +1,5 @@
 dist/
-node_modules/
+node_modules
+tools/tests/out/
 *.log
 .DS_Store

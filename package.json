@@ -1,0 +1,17 @@
+{
+  "name": "smog-almaty",
+  "private": true,
+  "description": "СМОГ · Алматы, 2049 — браузерная интерактивная драма на three.js",
+  "scripts": {
+    "build": "python3 tools/build.py",
+    "build:offline": "python3 tools/build.py --offline",
+    "serve": "python3 -m http.server 8770",
+    "test:boot": "node tools/tests/boot.js",
+    "test:render": "node tools/tests/render.js",
+    "test:play": "node tools/tests/playall.js",
+    "test:shots": "node tools/tests/walkshots.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
+}

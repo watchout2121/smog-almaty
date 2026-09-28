@@ -28,4 +28,6 @@
 - `src/story.js` — сюжет (узлы, выборы, флаги, концовки), `src/engine.js` — движок сцен, звук, сохранения, настройки.
 - `tools/geo_build.py` — конвертер `assets/geo/source-city-local.json` (OSM) → `assets/geo/almaty.json`.
 
+Разработка: заметки для Claude Code и правила проекта — в [CLAUDE.md](CLAUDE.md); тесты — `npm run test:boot`, `test:render`, `test:play`, `test:shots` (Playwright).
+
 Источники и лицензии ассетов — в [CREDITS.md](CREDITS.md).
