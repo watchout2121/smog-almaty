@@ -109,6 +109,28 @@ function smogMat(m,o){o=o||{};const key='smog_'+(o.key||'x');
   sh.vertexShader=vs;sh.fragmentShader=fs;};
  m.customProgramCacheKey=()=>key;return m;}
 const NZ='float nz(vec2 p){return texture2D(uNoise,p).r;}float nz2(vec2 p){return texture2D(uNoise,p).g;}float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\n';
+// комнаты за окнами (interior mapping, как в City Sample): луч от камеры идёт внутрь ячейки «окно × этаж» глубиной cell.z
+// до задней стены, боковой стены, пола или потолка; мебель, картины, телевизоры, офисные перегородки и лампы — по хэшу комнаты.
+// Возвращает свет комнаты: днём — рассеянный свет из окна (amb = цвет смога), вечером — лампа (lampC); emi — лампы и экраны.
+const ROOM=`vec3 roomMap(vec2 f,vec2 id,float sd,vec3 N,vec3 vd,vec3 cell,float off,float lit,vec3 lampC,vec3 amb,out vec3 emi){
+ vec3 Tn=vec3(-N.z,0.0,N.x);vec3 r=vec3(dot(vd,Tn),vd.y,max(dot(vd,-N),0.05))/cell;
+ r.x=abs(r.x)<1e-4?1e-4:r.x;r.y=abs(r.y)<1e-4?1e-4:r.y;
+ vec3 p=vec3(f,0.0);vec3 t3=(step(0.0,r)-p)/r;float t=min(min(t3.x,t3.y),t3.z);vec3 h=p+r*t;
+ float a=hh(id*1.31+sd*7.7),b=hh(id*2.17+sd*3.3),c=hh(id*0.73+sd*11.1);
+ vec3 wall=off>0.5?mix(vec3(0.6,0.62,0.64),vec3(0.74,0.73,0.7),a):(a<0.3?vec3(0.72,0.63,0.5):a<0.55?vec3(0.55,0.62,0.66):a<0.8?vec3(0.78,0.74,0.67):vec3(0.52,0.6,0.47));
+ vec3 col;emi=vec3(0.0);
+ if(t==t3.z){col=wall;
+  if(off>0.5){float part=step(h.y,0.4)*step(0.5,fract(h.x*3.0+b));col=mix(col,vec3(0.3,0.32,0.35),part);float sc=step(0.3,h.y)*step(h.y,0.4)*step(0.7,fract(h.x*6.0+c));emi+=vec3(0.35,0.55,0.8)*sc*0.5;}
+  else{float fu=step(h.y,0.42)*step(0.08+0.3*b,h.x)*step(h.x,0.5+0.4*b);col=mix(col,mix(vec3(0.24,0.17,0.11),vec3(0.3,0.32,0.36),c),fu);
+   float pic=step(0.56,h.y)*step(h.y,0.76)*step(0.62-0.3*c,h.x)*step(h.x,0.8-0.3*c)*step(0.4,b);col=mix(col,vec3(0.18,0.28,0.4)+c*0.3,pic);
+   float tv=step(0.3,h.y)*step(h.y,0.52)*step(0.15,h.x)*step(h.x,0.45)*step(0.78,c);col=mix(col,vec3(0.01),tv);emi+=vec3(0.4,0.55,0.9)*tv*step(0.5,a)*0.7;}}
+ else if(t==t3.x){col=wall*0.84;float wd=step(h.y,0.72)*step(0.5,h.z)*step(h.z,0.85)*step(0.55,c)*(1.0-off);col=mix(col,vec3(0.26,0.18,0.12),wd);}
+ else if(r.y<0.0){col=off>0.5?vec3(0.3,0.31,0.33):vec3(0.45,0.31,0.2)*(0.85+0.15*step(0.5,fract(h.x*5.0+b)));}
+ else{col=vec3(0.84,0.84,0.82);
+  if(off>0.5)emi+=lampC*step(0.62,fract(h.z*2.5))*step(abs(h.x-0.5),0.3)*1.6*lit;else emi+=lampC*(1.0-smoothstep(0.05,0.09,length(vec2(h.x-0.5,h.z-0.5))))*2.2*lit;}
+ float lamp=0.5+0.5*(1.0-smoothstep(0.0,0.85,length(vec2(h.x-0.5,h.z-0.5))+abs(h.y-0.9)*0.3));
+ return mix(col*amb*(0.5*(1.0-0.7*h.z)),col*lampC*lamp*0.6,lit);}
+`;
 
 // ---------------- материалы поверхностей ----------------
 const M={};
@@ -171,7 +193,7 @@ function mats(){if(M.ok)return M;M.ok=true;SU.uNoise.value=noiseTex();
 // uv=(колонка, этаж), color=базовый цвет, aB=(стиль, seed, высота этажа, витрина); стили: 0 кирпич,1 штукатурка (сталинка),2 панель,3 стекло,4 камень-офис,5 торговые 1-2 эт.,6 стройка,7 гаражи,8 плоская кровля,9 металлическая кровля,10 навес
 function buildingMat(){if(M.bld)return M.bld;
  M.bld=smogMat(new T.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:0.85,metalness:0}),{key:'bld',
-  vDecl:'attribute vec4 aB;attribute vec2 aH;varying vec4 vB;varying vec2 vH;',vert:'vB=aB;vH=aH;',fDecl:NZ+'varying vec4 vB;varying vec2 vH;float gGlass;float gRough;vec3 gEm;',
+  vDecl:'attribute vec4 aB;attribute vec2 aH;varying vec4 vB;varying vec2 vH;',vert:'vB=aB;vH=aH;',fDecl:NZ+ROOM+'varying vec4 vB;varying vec2 vH;float gGlass;float gRough;vec3 gEm;',
   map:`{float st=floor(vB.x+0.5),seed=floor(vB.y*997.0+0.5)/997.0,fh=vB.z,shop=vB.w;float top=vH.x,wsd=floor(vH.y*991.0+0.5)/991.0;vec3 base=diffuseColor.rgb;vec2 wp=vSWP.xz;vec3 an=abs(vSWN);float y=vSWP.y;
    gGlass=0.0;gRough=0.9;gEm=vec3(0.0);
    float n2=nz2(vec2(wp.x+wp.y,y)*0.05+seed*7.0),n3=texture2D(uNoise,vec2(dot(wp,vec2(0.7,0.7))*0.35,y*0.35)+seed).a;
@@ -229,9 +251,17 @@ function buildingMat(){if(M.bld)return M.bld;
      vec3 sc=hs<0.25?vec3(0.9,0.2,0.15):hs<0.5?vec3(0.2,0.7,0.9):hs<0.75?vec3(0.95,0.7,0.2):vec3(0.85,0.88,0.84);
      float txt=step(0.42,hh(floor(vec2(f.x*46.0,f.y*16.0))+id+wsd))*smoothstep(0.855,0.865,f.y)*smoothstep(0.945,0.935,f.y)*smoothstep(0.12,0.14,f.x)*smoothstep(0.88,0.86,f.x);
      c=mix(c,sc*0.16,band);gEm+=sc*band*(0.12+(0.9*txt)*(1.0-shut*0.7));}
-    {vec2 q=vec2((f.x-x0)/max(x1-x0,0.01),(f.y-y0)/max(y1-y0,0.01));float lamp=0.55+0.45*smoothstep(0.0,0.9,q.y)*smoothstep(0.9,0.2,abs(q.x-0.5));float furn=step(q.y,0.3+0.25*hh(id+6.0))*step(0.5,hh(floor(vec2(q.x*3.0,0.0))+id+wsd));float side=smoothstep(0.16,0.1,q.x)+smoothstep(0.84,0.9,q.x);float blind=step(0.7,hh(id+5.5))*step(0.5,fract(q.y*9.0));
-     wc*=lamp*(1.0-0.65*furn)*(1.0-0.5*side*curt)*(1.0-0.5*blind);}
-    vec3 wcol=mix(glass,wc*0.14,lit);
+    // комнаты за стеклом: параллакс вместо плоской картинки; шторы и жалюзи — поверх, на плоскости окна
+    vec3 winEm=vec3(0.0);
+    if(gf<0.5&&win>0.001){float off=step(2.5,st)*step(st,4.5);vec2 rq=off>0.5?vec2(vUv0.x/3.0,vUv0.y):vUv0;
+     float cw=st<0.5?3.0:st<1.5?3.3:st<2.5?3.1:st<3.5?4.8:st<4.5?2.8:3.0;
+     vec3 rEm;vec3 room=roomMap(fract(rq),floor(rq),seed+wsd*3.0,normalize(vec3(vSWN.x,0.0,vSWN.z)),vd,vec3(cw,fh,off>0.5?6.0:4.2),off,lit,wc,fogColor,rEm);
+     vec2 q=vec2((f.x-x0)/max(x1-x0,0.01),(f.y-y0)/max(y1-y0,0.01));
+     float cp=curt*(smoothstep(0.3,0.26,q.x)+smoothstep(0.7,0.74,q.x))*(1.0-off);
+     float bl=(1.0-curt)*step(0.72,hh(id+5.5))*smoothstep(0.35,0.6,abs(fract(q.y*11.0)-0.5)*2.0)*step(1.0-0.7*hh(id+6.6),q.y);
+     room=mix(room+rEm,cc*mix(fogColor*0.3,wc*0.7,lit),cp);room=mix(room,vec3(0.55,0.55,0.52)*mix(fogColor*0.25,wc*0.5,lit),bl*0.85);
+     float fr=0.12+0.7*fres;glass=refl*fr;winEm=room*(1.0-fr*0.8);}
+    vec3 wcol=glass;
     c=mix(c,wcol,win);c=mix(c,c*0.45,rev*0.7);c=mix(c,vec3(0.62,0.61,0.58),sill);
     // рамы и импосты
     float fr2=win*(1.0-smoothstep(0.0,0.025,min(min(f.x-x0,x1-f.x),min(f.y-y0,y1-f.y))));float mull=win*smoothstep(0.022,0.0,abs(f.x-0.5))*step(st,2.5)*(1.0-gf)*(1.0-balc);float tr=win*smoothstep(0.02,0.0,abs(f.y-(y0+(y1-y0)*0.72)))*step(st,2.5)*(1.0-gf);
@@ -239,7 +269,7 @@ function buildingMat(){if(M.bld)return M.bld;
     // кондиционеры под окнами
     float ac=step(0.78,hh(id+wsd*7.0+2.2))*step(st,4.5)*step(0.5,fl)*(1.0-balc)*(1.0-cor);float acm=ac*smoothstep(0.54,0.56,f.x)*smoothstep(0.88,0.86,f.x)*smoothstep(0.01,0.03,f.y)*smoothstep(y0-0.02,y0-0.04,f.y);
     c=mix(c,vec3(0.5,0.5,0.48)*(0.85+0.2*step(0.5,fract(f.x*30.0))),acm);
-    gGlass=win*(1.0-lit)*(1.0-shut);gEm+=wc*lit*win*0.36;
+    gGlass=win*(1.0-shut);gEm+=winEm*win;
     gRough=mix(0.9,0.08,gGlass);
     c*=0.9+0.2*n2;
    }else{c=base*0.5;}
@@ -1004,6 +1034,16 @@ const ADS=[
   x.fillStyle='#2a3a2a';x.textAlign='left';x.font='800 108px "Exo 2", Arial';x.fillText('ГОРИЗОНТ',40,150);x.font='600 54px "Exo 2", Arial';x.fillText('эко-квартал «Новый»',44,230);x.font='500 40px "Exo 2", Arial';x.fillText('воздух · тишина · горы',44,300);}},
  {k:'taxi',draw:(x,w,h)=>{x.fillStyle='#101418';x.fillRect(0,0,w,h);x.fillStyle='#f2f2ee';x.font='800 112px "Exo 2", Arial';x.textAlign='left';x.fillText('ВЕКТОР-ТАКСИ',40,170);x.fillStyle='#58c8f0';x.font='500 56px "Exo 2", Arial';x.fillText('Всегда в пути. Даже в пробке.',44,260);
   x.fillStyle='#f2f2ee';x.beginPath();x.moveTo(600,420);x.lineTo(650,340);x.lineTo(860,340);x.lineTo(930,400);x.lineTo(990,410);x.lineTo(990,440);x.lineTo(600,440);x.closePath();x.fill();x.fillStyle='#101418';x.beginPath();x.arc(680,440,34,0,7);x.arc(900,440,34,0,7);x.fill();}}];
+// реклама ИИ: «Вектор-Пара» (партнёр-ассистент вместо живых знакомств) и «Вектор-Ассистент» (замена сотрудников)
+ADS.push({k:'pair',draw:(x,w,h)=>{const g=x.createLinearGradient(0,0,w,h);g.addColorStop(0,'#2a0f2e');g.addColorStop(1,'#5a1a4a');x.fillStyle=g;x.fillRect(0,0,w,h);
+  const heart=(cx,cy,s,a)=>{x.save();x.translate(cx,cy);x.scale(s,s);x.globalAlpha=a;x.beginPath();x.moveTo(0,30);x.bezierCurveTo(-60,-10,-30,-60,0,-28);x.bezierCurveTo(30,-60,60,-10,0,30);x.fill();x.restore();};
+  x.fillStyle='#ff7ab8';heart(820,250,2.6,0.9);x.fillStyle='#ffd1e6';heart(900,150,0.9,0.6);heart(730,380,0.7,0.5);
+  x.fillStyle='#fff0f7';x.textAlign='left';x.font='800 104px "Exo 2", Arial';x.fillText('ВЕКТОР-ПАРА',40,140);x.font='500 50px "Exo 2", Arial';x.fillText('Идеальный партнёр.',44,225);x.fillText('Всегда рядом. Никогда не уйдёт.',44,285);
+  x.fillStyle='#ff7ab8';x.font='800 64px "Exo 2", Arial';x.fillText('97% совместимости',44,400);x.fillStyle='#d8a8c4';x.font='500 30px "IBM Plex Mono", monospace';x.fillText('ассистент напишет за вас · от 4 990/мес',44,460);}},
+ {k:'assist',draw:(x,w,h)=>{x.fillStyle='#eef4f7';x.fillRect(0,0,w,h);x.fillStyle='#0d2a3a';x.fillRect(0,0,w,120);x.fillStyle='#6fd8f2';x.font='800 88px "Exo 2", Arial';x.textAlign='left';x.fillText('ВЕКТОР-АССИСТЕНТ',40,92);
+  x.fillStyle='#0d2a3a';x.font='800 96px "Exo 2", Arial';x.fillText('−80% штата',40,245);x.font='500 48px "Exo 2", Arial';x.fillText('Ева работает 24/7.',44,320);x.fillText('Без отпусков, больничных и жалоб.',44,380);
+  x.fillStyle='#3a6a80';x.font='500 30px "IBM Plex Mono", monospace';x.fillText('внедрение за 1 день · ревью кода не требуется',44,455);
+  x.strokeStyle='#6fd8f2';x.lineWidth=10;x.beginPath();x.arc(890,300,80,0,7);x.stroke();x.fillStyle='#6fd8f2';x.beginPath();x.arc(890,300,26,0,7);x.fill();}});
 const AD_T={};function adTex(k){if(AD_T[k])return AD_T[k];const a=ADS.find(q=>q.k===k);AD_T[k]=canvasTex(1024,512,a.draw,true);return AD_T[k];}
 function billboard(ctx,x,z,ry,k,o){o=o||{};const s=ctx.scene;const g=new T.Group();g.position.set(x,0,z);g.rotation.y=ry;const H=o.h||5.2,Wd=o.w||7,Hh=o.hh||3.5;
  const metal=smogMat(new T.MeshStandardMaterial({color:C('#2a2d31'),roughness:0.5,metalness:0.6}),{key:'bbm'});
@@ -1043,9 +1083,56 @@ function addMask(ctx,g,col){g.updateMatrixWorld(true);let head=null,model=null;g
  const geo=new T.CylinderGeometry(0.083,0.07,0.085,14,1,true,-1.2,2.4);const m=new T.Mesh(geo,std({color:col,roughness:0.95,side:T.DoubleSide}));
  const pos=new T.Vector3(0,1.607,0.035).applyMatrix4(mw);L.attachToBone(head,m,pos,wq.clone().multiply(new T.Quaternion().setFromEuler(new T.Euler(0.12,0,0))),ws.x);m.castShadow=true;return m;}
 function sidewalkPt(x,z,side,off){const r=nearestRoad(x,z,2);if(!r)return [x,z,0];const rx=-r.dz,rz=r.dx;const o=(r.road.w/2+(off===undefined?6.2:off))*side;return [r.x+rx*o,r.z+rz*o,Math.atan2(r.dx,r.dz),r];}
+// прохожие: люди в масках и серийные андроиды «Вектора» (примерно каждый четвёртый; маска им не нужна)
+const UNIT_MIX=['plain','plain','taxi','courier','eco'];
 function addWalkers(ctx,list,seed){const r=rng(seed);const max=Math.round(20*L.Q.crowd);const out=[];
- for(let i=0;i<list.length&&out.length<max;i++){const q=list[i];const look=L.crowdLook(r);const walk=q.b?{a:q.a,b:q.b,speed:1.05+r()*0.35}:null;
-  const ch=L.makeChar(ctx,look,{x:q.a[0],z:q.a[1],ry:q.ry!==undefined?q.ry:r()*TAU,anim:walk?'walk':(q.anim||'idle'),walk});ch.userData.radius=0.32;if(r()<0.72)addMask(ctx,ch,MASKC[(r()*MASKC.length)|0]);out.push(ch);}
+ for(let i=0;i<list.length&&out.length<max;i++){const q=list[i];const bot=r()<0.26;const look=bot?L.unitLook(UNIT_MIX[(r()*UNIT_MIX.length)|0]):L.crowdLook(r);const walk=q.b?{a:q.a,b:q.b,speed:bot?1.25:1.05+r()*0.35}:null;
+  const ch=L.makeChar(ctx,look,{x:q.a[0],z:q.a[1],ry:q.ry!==undefined?q.ry:r()*TAU,anim:walk?'walk':(q.anim||'idle'),walk});ch.userData.radius=0.32;if(!bot&&r()<0.72)addMask(ctx,ch,MASKC[(r()*MASKC.length)|0]);out.push(ch);}
+ return out;}
+// ---------------- рабочие андроиды «Чистого города» (гл. 4): дворник, эко-инспектор, патруль, регулировщик, курьер ----------------
+function unitProp(kind){const g=new T.Group();const dk=std({color:'#1b1d21',metalness:0.5,roughness:0.4});
+ const scr=(c,w,h)=>new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:C(c).multiplyScalar(1.7),toneMapped:false}));
+ if(kind==='scanner'){g.add(box(0.08,0.14,0.035,dk,0,0,0));const s=scr('#6fe08a',0.06,0.09);s.position.z=0.019;g.add(s);const tip=glow('#6fe08a',0.12,0.8);tip.position.set(0,0.09,0);g.add(tip);}
+ else if(kind==='tablet'){g.add(box(0.2,0.28,0.015,dk,0,0,0));const s=scr('#58c8f0',0.18,0.25);s.position.z=0.009;g.add(s);}
+ else if(kind==='baton'){const b=new T.Mesh(new T.CylinderGeometry(0.018,0.018,0.42,8),new T.MeshBasicMaterial({color:C('#ff8a2a').multiplyScalar(3),toneMapped:false}));g.add(b);const gl=glow('#ff8a2a',0.5,0.5);gl.position.y=0.12;g.add(gl);g.add(cyl(0.022,0.022,0.12,8,dk,0,-0.26,0));}
+ else if(kind==='box'){g.add(box(0.42,0.44,0.3,std({color:'#e3b12c',roughness:0.7}),0,0,0));const s=new T.Mesh(new T.PlaneGeometry(0.3,0.1),new T.MeshBasicMaterial({map:signTex([{t:'ДОСТАВКА',font:'800 60px "Exo 2", Arial'}],{w:320,h:100,bg:'#1b1d21',fg:'#e3b12c'})}));s.position.set(0,0.08,-0.151);s.rotation.y=PI;g.add(s);}
+ else if(kind==='cart'){const bin=std({color:'#2f6d3a',roughness:0.55,metalness:0.1});g.add(box(0.62,0.72,0.5,bin,0,0.52,0));g.add(box(0.66,0.05,0.54,dk,0,0.9,0));
+  for(const sx of [-0.28,0.28]){const w=cyl(0.1,0.1,0.05,12,dk,sx,0.1,-0.18);w.rotation.z=PI/2;g.add(w);}g.add(box(0.03,0.03,0.5,dk,-0.24,0.95,-0.45),box(0.03,0.03,0.5,dk,0.24,0.95,-0.45),box(0.5,0.03,0.03,dk,0,0.95,-0.7));
+  const br=cyl(0.015,0.015,1.3,6,std({color:'#8a6a3c'}),0.36,0.95,0.05);br.rotation.x=0.25;g.add(br);
+  const s=new T.Mesh(new T.PlaneGeometry(0.5,0.14),new T.MeshBasicMaterial({map:signTex([{t:'ЧИСТЫЙ ГОРОД',font:'800 44px "Exo 2", Arial'}],{w:400,h:110,bg:'#0c1a12',fg:'#7fe0a0'})}));s.position.set(0,0.62,0.252);g.add(s);}
+ g.traverse(o=>{if(o.isMesh)o.castShadow=true;});return g;}
+// центр занятости: очередь людей вдоль дома, вывеска и табло ожидания
+function jobQueue(ctx,sp,face){const s=ctx.scene;const h=sp(784,12.5,1,9.4),t=sp(784,3,1,9.4);let dx=h[0]-t[0],dz=h[1]-t[1];const L0=Math.hypot(dx,dz)||1;dx/=L0;dz/=L0;const ry=Math.atan2(dx,dz);const r=rng(612);const out=[];
+ for(let i=0;i<8;i++){const x=h[0]-dx*(0.9+i*1.05)+(r()-0.5)*0.25,z=h[1]-dz*(0.9+i*1.05)+(r()-0.5)*0.25;const ch=L.makeChar(ctx,L.crowdLook(r),{x,z,ry:ry+(r()-0.5)*0.5,anim:r()<0.3?'sad_pose':'idle'});ch.userData.radius=0.3;addMask(ctx,ch,MASKC[(r()*MASKC.length)|0]);out.push(ch);}
+ const g=new T.Group();g.position.set(h[0]+dx*0.4,0,h[1]+dz*0.4);g.rotation.y=face(h,1);const pm=std({color:'#2a2d31',metalness:0.5,roughness:0.5});g.add(box(0.08,2.6,0.08,pm,-1.1,1.3,0),box(0.08,2.6,0.08,pm,1.1,1.3,0));
+ const sg=new T.Mesh(new T.PlaneGeometry(2.4,0.62),new T.MeshBasicMaterial({map:signTex([{t:'ЦЕНТР ЗАНЯТОСТИ',font:'800 92px "Exo 2", Arial',y:0.36},{t:'переобучение · пособия',font:'500 56px "Exo 2", Arial',y:0.78}],{w:1024,h:260,bg:'#12324a',fg:'#e8f2f8'}),fog:true}));sg.position.set(0,2.45,0.05);g.add(sg);
+ const scr=new T.Mesh(new T.PlaneGeometry(1.1,0.42),new T.MeshBasicMaterial({map:signTex([{t:'ОЧЕРЕДЬ 1 214',font:'700 70px "IBM Plex Mono", monospace',y:0.38},{t:'ОЖИДАНИЕ 3 МЕС',font:'500 50px "IBM Plex Mono", monospace',y:0.78}],{w:512,h:200,bg:'#050709',fg:'#ff8a3d'}),toneMapped:false,fog:true}));scr.material.color.setScalar(1.6);scr.position.set(0,1.75,0.05);g.add(scr);
+ s.add(g);ctx.addCollider({t:'b',x:g.position.x,z:g.position.z,w:2.4,d:0.3,ry:-g.rotation.y});
+ const mid=out[3].position;ctx.points.jobs=[mid.x+Math.sin(face(h,1))*1.6,mid.z+Math.cos(face(h,1))*1.6];return out;}
+// свидание на скамейке: у обоих в ушах ассистенты «Вектор-Пара», над ними голограмма совместимости
+function dateBench(ctx,sp,face){const s=ctx.scene;const q=sp(781,-46,1,7.8);const ry=face(q,1);const g=new T.Group();g.position.set(q[0],0,q[1]);g.rotation.y=ry;s.add(g);
+ const wd=std({color:'#6a4a32',roughness:0.7}),mt=std({color:'#1d1f22',metalness:0.6,roughness:0.4});g.add(box(1.9,0.07,0.46,wd,0,0.45,0),box(1.9,0.4,0.05,wd,0,0.72,-0.22));for(const sx of [-0.85,0.85])g.add(box(0.06,0.45,0.42,mt,sx,0.225,0));
+ const pair=[];[[-0.42,{human:1,top:'#3a4a6a',bot:'#22252b',shoe:'#161412',skin:[0.95,0.8,0.68],hair:'#1a1310'}],[0.42,{human:1,top:'#8a3a4a',bot:'#2a2226',shoe:'#161412',skin:[0.98,0.84,0.72],hair:'#3a2418',hairStyle:'long',scale:0.94}]].forEach(([x,lk],i)=>{
+  const w=new T.Vector3(x,0,0.06).applyAxisAngle(new T.Vector3(0,1,0),ry);const ch=L.makeChar(ctx,lk,{x:q[0]+w.x,z:q[1]+w.z,ry:ry+(i?-0.35:0.35),pose:'sit',anim:'idle',smile:i?0.35:0.15});ch.userData.radius=0.3;
+  const ph=new T.Mesh(new T.PlaneGeometry(0.07,0.13),new T.MeshBasicMaterial({color:C('#bfe8ff').multiplyScalar(1.5),toneMapped:false}));ph.position.set(0.02,0.62,0.3);ph.rotation.x=-1.0;ch.add(ph);
+  for(const ex of [-0.075,0.075]){const e=glow('#58c8f0',0.09,0.95);e.position.set(ex,1.18,0.0);ch.add(e);}pair.push(ch);});
+ const hol=L.textPlane('ВЕКТОР-ПАРА · СОВМЕСТИМОСТЬ 97%',{w:2.2,h:0.3,color:'#ff7ab8',font:'700 88px "Exo 2", Arial',canvasW:2048,canvasH:256,intensity:1.8});hol.position.set(0,1.95,0.1);g.add(hol);
+ const heart=glow('#ff7ab8',0.9,0.5);heart.position.set(0,1.95,0.05);g.add(heart);
+ ctx.ticks.push(t=>{hol.material.opacity=0.7+0.3*Math.sin(t*3.1);hol.position.y=1.95+Math.sin(t*1.2)*0.03;});
+ ctx.addCollider({t:'b',x:q[0],z:q[1],w:1.9,d:0.5,ry:-ry});ctx.points.date=[q[0]+Math.sin(ry)*1.4,q[1]+Math.cos(ry)*1.4];return pair;}
+function androidWorkers(ctx,sp,face){const U=L.unitLook,out={};
+ const mk=(kind,at,ry,o)=>{o=o||{};const ch=L.makeChar(ctx,U(kind,o.look),Object.assign({x:at[0],z:at[1],ry,anim:o.walk?'walk':'idle'},o,{look:null}));ch.userData.radius=0.36;return ch;};
+ const hold=(ch,kind,x,y,z,rx)=>{const p=unitProp(kind);p.position.set(x,y,z);if(rx)p.rotation.x=rx;ch.add(p);return p;};
+ // дворник толкает тележку по тротуару Пушкина
+ {const a=sp(796,78,1,4.4),b=sp(793,46,1,4.4);const ch=mk('cleaner',a,0,{walk:{a:[a[0],a[1]],b:[b[0],b[1]],speed:0.62},speed:0.6});ch.userData.radius=0.5;hold(ch,'cart',0,0,0.78);out.cleaner=ch;ctx.points.workers=[(a[0]+b[0])/2,(a[1]+b[1])/2];}
+ // эко-инспектор снимает показания у табло PM2.5
+ {const q=sp(797.5,152.5,1,4.8);const ch=mk('eco',q,q[2]+PI*0.9);hold(ch,'scanner',0.2,1.12,0.3,-0.5);out.eco=ch;}
+ // патруль у остановки на Жибек Жолы
+ {const q=sp(874,-80,1,4.2),q2=sp(876,-79,1,5.4);const a=mk('patrol',q,face(q,1)),b=mk('patrol',q2,face(q2,1)+0.7);hold(a,'tablet',0.24,1.15,0.34,-0.6);out.patrol=[a,b];}
+ // регулировщик на углу перехода: светофор для людей всё равно красный
+ {const q=sp(PTS.cross2[0]+3.4,PTS.cross2[1],-1,1.4);const ch=mk('patrol',q,q[2]+PI/2,{look:{top:'#e6e9ec',acc:'#ff8a2a',led:'#58c8f0'}});hold(ch,'baton',0.3,1.02,0.22,-1.0);out.traffic=ch;}
+ // курьер с коробом быстрым шагом по Жибек Жолы
+ {const a=sp(846,-80,-1,5.2),b=sp(812,-78,-1,5.2);const ch=mk('courier',a,0,{walk:{a:[a[0],a[1]],b:[b[0],b[1]],speed:1.7},speed:1.35});hold(ch,'box',0,1.28,-0.26);out.courier=ch;}
  return out;}
 function droneMesh(){const g=new T.Group();const m=std({color:'#1c1f24',metalness:0.7,roughness:0.35});g.add(box(0.9,0.2,0.6,m,0,0,0));
  for(const [x,z] of [[-0.62,-0.5],[0.62,-0.5],[-0.62,0.5],[0.62,0.5]]){const arm=box(0.7,0.05,0.07,m,x*0.55,0,z*0.55);arm.rotation.y=Math.atan2(z,x);g.add(arm);const rot=new T.Mesh(new T.CircleGeometry(0.3,16),new T.MeshBasicMaterial({color:0x222222,transparent:true,opacity:0.45,depthWrite:false,side:T.DoubleSide}));rot.rotation.x=-PI/2;rot.position.set(x,0.09,z);g.add(rot);}
@@ -1077,7 +1164,7 @@ function babaScene(ctx,x,z,ry){// бабушка с тележкой баурс�
  // платок
  baba.updateMatrixWorld(true);let head=null;baba.traverse(o=>{if(o.isBone&&o.name==='Head')head=o;});const model=baba.children[0];
  if(head&&model){const mw=model.matrixWorld;const wq=new T.Quaternion(),p=new T.Vector3(),sc=new T.Vector3();mw.decompose(p,wq,sc);const sc2=new T.Mesh(new T.SphereGeometry(0.112,20,12,0,TAU,0,PI*0.62),std({map:L.ornamentTex('#7a2230','#e0b060',21,[3,2]),roughness:0.9,side:T.DoubleSide}));sc2.scale.set(1,1.05,1.12);L.attachToBone(head,sc2,new T.Vector3(0,1.735,0.0).applyMatrix4(mw),wq.clone().multiply(new T.Quaternion().setFromEuler(new T.Euler(-0.25,0,0))),sc.x);}
- const cop=L.makeChar(ctx,{android:1,top:'#1d2a3a',bot:'#141820',skin:'#e8ecf0',hair:'#111',acc:'#58c8f0',led:'#58c8f0'},{x:wp2.x,z:wp2.z,ry:ry-2.3,anim:'idle'});ctx.byKey.cop=cop;cop.userData.faceTo=baba;
+ const cop=L.makeChar(ctx,L.unitLook('patrol'),{x:wp2.x,z:wp2.z,ry:ry-2.3,anim:'idle'});ctx.byKey.cop=cop;cop.userData.faceTo=baba;
  const tab=new T.Mesh(new T.PlaneGeometry(0.22,0.3),new T.MeshBasicMaterial({color:C('#58c8f0').multiplyScalar(1.6),toneMapped:false}));tab.position.set(0.25,1.15,0.35);tab.rotation.x=-0.6;cop.add(tab);
  ctx.addCollider({t:'b',x,z,w:1.5,d:0.9,ry:-ry});return {baba,cop,cart};}
 
@@ -1201,6 +1288,10 @@ function buildCity(mode){const lk=LOOKS[mode];const Q=L.Q;const drive=mode==='dr
   // площадь базара: «Чистый город», киоски, дроны
   billboard(ctx,990,-121,rot+0.35,'clean',{h:4.2,w:6,hh:3.2});kiosk(ctx,918,-121,rot,'БАУРСАКИ · ЧАЙ','#d9c9a8');kiosk(ctx,1002,-127,rot-0.3,'СИМ-КАРТЫ','#c4ccd2');
   drones=addDrones(ctx,[PTS.drone_zone[0],PTS.drone_zone[1]],2);ctx._drones=drones;
+  ctx._workers=androidWorkers(ctx,sp,face);
+  // боль про ИИ: очередь в центр занятости, свидание с ассистентами, реклама «Вектор-Пара» и «Вектор-Ассистент»
+  ctx._queue=jobQueue(ctx,sp,face);ctx._date=dateBench(ctx,sp,face);
+  {const a=sp(790,96,-1,7.6);billboard(ctx,a[0],a[1],rot,'pair',{h:5,w:6.5,hh:3.3,double:true});const b=sp(852,-78,-1,7.6);billboard(ctx,b[0],b[1],rot+PI,'assist',{h:4.8,w:6.5,hh:3.2,double:true});}
   // люди
   const wl=[];const seg=(x,z,side,len,off)=>{const a=sp(x,z,side,off||6.3);const d=a[3];if(!d)return;const b=[a[0]+d.dx*len,a[1]+d.dz*len];wl.push({a:[a[0],a[1]],b});};
   seg(790,120,1,-32);seg(787,70,-1,40);seg(783,20,1,-36);seg(780,-20,-1,30);seg(777,-50,1,26,5.8);seg(840,-80,1,-30);seg(930,-86,1,34,6.8);seg(880,-80,-1,-40);seg(760,156,1,30);seg(820,151,-1,-30);seg(745,157,-1,-35);
@@ -1208,7 +1299,7 @@ function buildCity(mode){const lk=LOOKS[mode];const Q=L.Q;const drive=mode==='dr
   // ждут у переходов (смотрят в телефоны)
   const wr=sp(PTS.cross1[0]+1,PTS.cross1[1],1,0.9);wl.unshift({a:[wr[0]+0.8,wr[1]],ry:wr[2]+PI/2},{a:[wr[0]-0.9,wr[1]+0.4],ry:wr[2]+PI/2+0.3});
   const wz=sp(PTS.cross2[0]-1,PTS.cross2[1],-1,1.0);wl.unshift({a:[wz[0],wz[1]],ry:wz[2]-PI/2},{a:[wz[0]+1.4,wz[1]-0.3],ry:wz[2]-PI/2-0.2},{a:[wz[0]-1.2,wz[1]+0.2],ry:wz[2]-PI/2+0.3});
-  ctx._crowd=addWalkers(ctx,wl,31);crowdLOD(ctx,ctx._crowd,80);
+  ctx._crowd=addWalkers(ctx,wl,31);crowdLOD(ctx,ctx._crowd,80);crowdLOD(ctx,[...ctx._queue,...ctx._date,...Object.values(ctx._workers).flat()],90);
   // курьер на электросамокате носится по тротуару (событие walk1)
   {const a=sp(799,140,1,5.6),b=sp(789,20,1,5.6);const cr=L.makeChar(ctx,L.crowdLook(rng(77)),{x:a[0],z:a[1],anim:'idle',walk:{a:[a[0],a[1]],b:[b[0],b[1]],speed:4.6}});cr.userData.radius=0.45;addMask(ctx,cr,'#1a1b1e');
    const sc=new T.Group();const dm=std({color:'#1c1f24',metalness:0.6,roughness:0.4});sc.add(box(0.18,0.06,1.0,dm,0,0.12,0),box(0.04,1.05,0.04,dm,0,0.62,0.42),box(0.5,0.04,0.04,dm,0,1.13,0.42));
@@ -1223,7 +1314,7 @@ function buildCity(mode){const lk=LOOKS[mode];const Q=L.Q;const drive=mode==='dr
   const pc=policeCar(ctx);ctx._police=pc;placeCar(pc,PTS.drive_start[0],PTS.drive_start[1],PTS.drive_start[2]);
   const erl=L.makeChar(ctx,'erl',{x:0,z:0,ry:0,pose:'sit'});const dina=L.makeChar(ctx,'dina',{x:0,z:0,ry:0,pose:'sit'});pc.group.add(erl);pc.group.add(dina);erl.position.set(0.42,0.1,-0.1);dina.position.set(-0.42,0.1,-0.1);erl.scale.setScalar(0.92);dina.scale.setScalar(0.92);erl.userData.noCollide=dina.userData.noCollide=true;
   // вдоль Толе би: щиты, табло, остановки, киоски
-  [[40,1,'air'],[330,-1,'taxi'],[610,1,'hor'],[880,-1,'clean'],[150,-1,'hor'],[740,1,'taxi']].forEach(([x,sd,k],i)=>{const r=nearestRoad(x,780-x*0.1,1,rr=>/Толе би/.test(rr.name));const q=sp(r?r.x:x,r?r.z:780,sd,7.2);billboard(ctx,q[0],q[1],q[2]+(sd>0?PI:0),k,{h:5.2,w:7,hh:3.5,double:true});});
+  [[40,1,'air'],[330,-1,'taxi'],[610,1,'hor'],[880,-1,'clean'],[150,-1,'assist'],[740,1,'pair']].forEach(([x,sd,k],i)=>{const r=nearestRoad(x,780-x*0.1,1,rr=>/Толе би/.test(rr.name));const q=sp(r?r.x:x,r?r.z:780,sd,7.2);billboard(ctx,q[0],q[1],q[2]+(sd>0?PI:0),k,{h:5.2,w:7,hh:3.5,double:true});});
   [[250,1],[700,-1]].forEach(([x,sd])=>{const r=nearestRoad(x,780-x*0.1,1,rr=>/Толе би/.test(rr.name));const q=sp(r.x,r.z,sd,3.2);aqiBoard(ctx,q[0],q[1],q[2]+(sd>0?PI/2:-PI/2));});
   [[90,1],[480,-1],[860,1]].forEach(([x,sd])=>{const r=nearestRoad(x,780-x*0.1,1,rr=>/Толе би/.test(rr.name));const q=sp(r.x,r.z,sd,5.2);busStop(ctx,q[0],q[1],face(q,sd),'air');});
   [[180,1,'МАСКИ · ФИЛЬТРЫ'],[400,-1,'КОФЕ С СОБОЙ'],[562,1,'ШАУРМА'],[820,-1,'ЦВЕТЫ']].forEach(([x,sd,t])=>{const r=nearestRoad(x,780-x*0.1,1,rr=>/Толе би/.test(rr.name));const q=sp(r.x,r.z,sd,9);kiosk(ctx,q[0],q[1],face(q,sd),t);});

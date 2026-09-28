@@ -199,13 +199,15 @@ function esentai(){const g=new T.Group();const H=162;const sh=new T.Shape();sh.m
  const edge=new T.Mesh(new T.BoxGeometry(1,0.8,23),emis('#7fd6ff',3));edge.position.set(0,H-14,0);edge.rotation.z=Math.atan2(28,22);edge.scale.x=Math.hypot(22,28);g.add(edge);return g;}
 
 // ---------------- characters ----------------
+// андроиды (X Bot): shell:1 — корпус из панелей (цвета top/bot — цвета панелей), чёрная механика суставов и кистей, «пояс» с огоньками;
+// hair — окрашенный «скальп» (у безымянных серийных моделей его нет); eye — цвет линз (по умолчанию голубой)
 const LOOK={
- aya:{android:1,top:'#e9edf2',bot:'#2a2f38',skin:'#f1f3f6',hair:'#16120f',shoe:'#1a1a1c',acc:'#4fd2ff',led:'#4fd2ff'},
+ aya:{android:1,shell:1,top:'#e9edf2',bot:'#2a2f38',skin:'#f1f3f6',hair:'#16120f',shoe:'#1a1a1c',acc:'#4fd2ff',led:'#4fd2ff'},
  erl:{android:1,top:'#24324a',bot:'#151920',skin:'#eef1f4',hair:'#2a1f18',shoe:'#0c0c0e',acc:'#6fb8ff',led:'#6fb8ff'},
- saya:{android:1,top:'#b8c6a0',bot:'#3a4032',skin:'#eef0f2',hair:'#2a2218',acc:'#b9e68f',led:'#f2c94c'},
- bori:{android:1,top:'#d9892b',bot:'#34373c',skin:'#aeb4bb',hair:'#ffd23f',acc:'#ffd23f',led:'#4fd2ff',scale:1.38},
- sulu:{android:1,top:'#eef1f3',bot:'#dfe4e8',skin:'#f3f4f6',hair:'#221a14',acc:'#e84a4a',led:'#4fd2ff'},
- bota:{android:1,top:'#ffcf4a',bot:'#3a5a8a',skin:'#f2f3f5',hair:'#3a2a1a',acc:'#4fd2ff',led:'#4fd2ff',scale:0.62},
+ saya:{android:1,shell:1,top:'#b8c6a0',bot:'#3a4032',skin:'#eef0f2',hair:'#2a2218',acc:'#b9e68f',led:'#f2c94c'},
+ bori:{android:1,shell:1,top:'#d9892b',bot:'#34373c',skin:'#aeb4bb',hair:'#ffd23f',acc:'#ffd23f',led:'#4fd2ff',eye:'#ffd23f',scale:1.38},
+ sulu:{android:1,shell:1,top:'#eef1f3',bot:'#dfe4e8',skin:'#f3f4f6',hair:'#221a14',acc:'#e84a4a',led:'#4fd2ff'},
+ bota:{android:1,shell:1,top:'#ffcf4a',bot:'#3a5a8a',skin:'#f2f3f5',hair:'#3a2a1a',acc:'#4fd2ff',led:'#4fd2ff',scale:0.62},
  dina:{human:1,top:'#3a271b',bot:'#1c1f24',shoe:'#17120e',skin:[1.0,0.83,0.68],beard:'#1a1310',hair:'#120e0c'},
  zh:{human:1,top:'#34443b',bot:'#2a2d31',shoe:'#1c1a18',skin:[1.0,0.85,0.72],beard:'#77716a',hair:'#5c5750',hairStyle:'receding'},
  ata:{human:1,top:'#5e4c3a',bot:'#34343a',shoe:'#231d18',skin:[0.95,0.79,0.64],beard:'#e4e4e0',hair:'takiya',scale:0.96},
@@ -216,24 +218,63 @@ const LOOK={
  ana:{holo:1,holoC:'#b9a6ff'},
  police:{soldier:1},topan:{soldier:1,topan:1}
 };
+// серийные андроиды «Вектора» в городе: белый корпус как у референса «Humanoid robot AI», цвет панелей — по службе
+const UNIT={plain:{top:'#eceff2',bot:'#e6e9ec',acc:'#4fd2ff'},eco:{top:'#eceff2',bot:'#e6e9ec',acc:'#6fe08a'},patrol:{top:'#22324a',bot:'#e6e9ec',acc:'#58c8f0',led:'#58c8f0'},
+ courier:{top:'#e3b12c',bot:'#2b2e33',acc:'#e3b12c'},cleaner:{top:'#e07a2c',bot:'#e6e9ec',acc:'#ffb24a'},taxi:{top:'#eceff2',bot:'#1e2024',acc:'#f2c230'}};
+function unitLook(kind,o){return Object.assign({android:1,shell:1,skin:'#f1f3f5',hair:null,shoe:'#1d1f23',led:'#4fd2ff'},UNIT[kind]||UNIT.plain,o||{});}
+LOOK.unit=unitLook('plain');
 const _CR=rng(77);
 function crowdLook(r){r=r||_CR;const tops=['#2a2f38','#4a3526','#1f3d30','#5a1f2a','#3a3a40','#6a5846','#23304a','#403028','#1c1c1e','#5d4d3a','#7a6a58','#2e3b52'];const bots=['#1a1a1c','#23262b','#2d2a26','#1c2230'];
  return {human:1,top:tops[(r()*tops.length)|0],bot:bots[(r()*bots.length)|0],shoe:'#161412',skin:[0.93+r()*0.07,0.76+r()*0.1,0.6+r()*0.12],beard:r()<0.35?['#1a1310','#555049','#9a958e'][(r()*3)|0]:null,hair:r()<0.8?['#120e0c','#2a1f16','#5c5750','#8a8680'][(r()*4)|0]:(r()<0.5?'takiya':null),scale:0.94+r()*0.1};}
 const CROWD=['#2a2f38','#4a3526','#1f3d30','#5a1f2a','#3a3a40','#6a5846','#23304a','#403028','#1c1c1e','#5d4d3a'];
-const REGION=`vec3 bp=vBind;float ax=abs(bp.x);vec3 rc=uTop;gRegR=uAnd>0.5?0.72:0.86;gRegE=vec3(0.0);gClear=0.0;
+// Раскраска по позе привязки (bind pose, метры; T-поза: руки вдоль ±x на y≈1.44, голова 1.52–1.81, глаза ±0.031/1.668).
+// Андроиды: глянцевые панели со швами и винтами, линзы глаз, диск на виске с кольцом-диодом, суставы (меш Beta_Joints) — чёрная механика.
+const REGION=`vec3 bp=vBind;float ax=abs(bp.x);vec3 rc=uTop;gRegR=uAnd>0.5?0.72:0.86;gRegE=vec3(0.0);gClear=0.0;gMetal=0.0;float cloth=1.0;
 if(bp.y<0.95&&ax<0.4){rc=uBot;gRegR=0.8;}
 if(bp.y<0.09&&ax<0.4){rc=uShoe;gRegR=0.4;gClear=0.6;}
-if(ax>0.66){rc=uSkin;gRegR=uAnd>0.5?0.3:0.55;gClear=uAnd;}
-if(bp.y>1.49&&ax<0.2){rc=uSkin;gRegR=uAnd>0.5?0.28:0.6;gClear=uAnd;
- float hl=mix(1.748,1.585,smoothstep(0.035,-0.03,bp.z));if(bp.y>hl){rc=uHair;gRegR=0.5;gClear=0.15;}
- if(uAnd>0.5&&bp.x<-0.058&&bp.y>1.62&&bp.y<1.70&&bp.z>-0.012&&bp.z<0.07){rc=uLed;gRegE=uLed*uLedI;}}
-if(uAnd>0.5){if(bp.x>0.30&&bp.x<0.38&&bp.y>1.25&&bp.y<1.6){rc=mix(rc,uAcc,0.8);gRegE=uAcc*0.7;}
- vec2 tq=vec2(bp.x,bp.y-1.28);if(bp.z>0.07&&tq.y<0.045&&tq.y>-0.045&&abs(tq.x)<(0.045-tq.y)*0.55){rc=uAcc;gRegE=uAcc*1.6;}}
-diffuseColor.rgb*=rc*uDark;`;
-function charMat(L,dark){const Mat=L.android?T.MeshPhysicalMaterial:T.MeshStandardMaterial;const m=new Mat({color:0xffffff,roughness:0.8,metalness:0,skinning:true});if(L.android){m.clearcoat=1.0;m.clearcoatRoughness=0.12;}
- const u={uSkin:{value:C(L.skin||'#c99a78')},uTop:{value:C(L.top||'#222222')},uBot:{value:C(L.bot||'#1a1a1a')},uShoe:{value:C(L.shoe||'#111111')},uHair:{value:C(L.hair||'#111111')},uAcc:{value:C(L.acc||'#000000')},uLed:{value:C(L.led||'#000000')},uAnd:{value:L.android?1:0},uLedI:{value:L.led?2.6:0},uDark:{value:dark||1}};m.userData.u=u;
+if(ax>0.66){rc=uSkin;gRegR=uAnd>0.5?0.3:0.55;gClear=uAnd;cloth=0.0;}
+bool hd=bp.y>1.49&&ax<(bp.y>1.57?0.2:0.1);bool hr=false;
+if(hd){rc=uSkin;gRegR=uAnd>0.5?0.28:0.6;gClear=uAnd;cloth=0.0;
+ float hl=mix(1.748,1.585,smoothstep(0.035,-0.03,bp.z));if(bp.y>hl&&uBald<0.5){rc=uHair;gRegR=0.5;gClear=0.15;hr=true;}}
+if(uAnd>0.5){float shell=max(1.0-cloth,uShell);
+ if(uShell>0.5&&!hr&&bp.y>0.09){gRegR=min(gRegR,0.3);gClear=1.0;if(ax>0.66){rc=vec3(0.03,0.032,0.036);gRegR=0.3;gMetal=0.6;gClear=0.4;}}
+ if(uJoint>0.5){float cov=cloth*(1.0-uShell);float axv=(ax>0.2&&bp.y>1.25)?ax:bp.y;float rib=0.5+0.5*sin(axv*760.0);
+  rc=mix(vec3(0.028,0.03,0.034)*(0.65+0.7*rib),rc*0.55,cov);gRegR=mix(0.28+0.22*rib,0.85,cov);gMetal=0.75*(1.0-cov);gClear=0.0;}
+ else{float sm=0.0,scr=0.0;
+  if(ax>0.17&&bp.y>1.3){sm=max(sm,sLn(ax-0.245,0.0022));sm=max(sm,sLn(ax-0.405,0.0022));sm=max(sm,sLn(ax-0.6,0.0022));sm=max(sm,sLn(ax-0.685,0.002));}
+  if(bp.y<0.98&&bp.y>0.1&&ax<0.4){sm=max(sm,sLn(bp.y-0.915,0.0024)*uShell);sm=max(sm,sLn(bp.y-0.63,0.0022));sm=max(sm,sLn(bp.y-0.2,0.0022));
+   if(bp.z>0.0)sm=max(sm,sLn(length(vec2(ax-0.082,bp.y-0.515))-0.036,0.002));}
+  if(uShell>0.5&&bp.y>0.95&&bp.y<1.5&&ax<0.2){float q=min(1.0,bp.x*bp.x/0.0196);float ye=1.2+0.05*(1.0-q),yp=1.075+0.025*q;
+   if(bp.y>yp&&bp.y<ye){float sg=smoothstep(0.3,0.5,abs(fract(bp.y*70.0)-0.5));rc=vec3(0.022,0.024,0.028)*(0.7+0.6*sg);gRegR=0.35;gMetal=0.65;gClear=0.0;
+    vec2 cg=bp.xy*90.0;float h=fract(sin(dot(floor(cg),vec2(12.9898,78.233)))*43758.5453);float dt=step(0.93,h)*(1.0-smoothstep(0.1,0.35,length(fract(cg)-0.5)))*step(0.02,bp.z);
+    gRegE+=mix(vec3(1.0,0.32,0.08),uAcc,step(0.975,h))*dt*(0.9+0.6*sin(uTime*3.0+h*40.0));}
+   else{sm=max(sm,sLn(bp.y-ye,0.0026));sm=max(sm,sLn(bp.y-yp,0.0026));
+    if(bp.y>ye&&bp.y<1.465&&bp.z>0.0)sm=max(sm,0.7*sLn(bp.x,0.0018));if(bp.z<0.0)sm=max(sm,sLn(bp.x,0.002));
+    sm=max(sm,sLn(bp.y-1.468,0.0024));
+    if(bp.z>0.02){scr=max(scr,scrw(vec2(ax-0.118,bp.y-1.405)));scr=max(scr,scrw(vec2(ax-0.128,bp.y-1.27)));scr=max(scr,scrw(vec2(ax-0.092,bp.y-1.005)));}}}
+  if(hd&&!hr){
+   if(bp.z>0.0)sm=max(sm,sLn((length(vec2(bp.x/0.068,(bp.y-1.648)/0.094))-1.0)*0.068,0.0018));
+   if(bp.z>0.06){float er=length(vec2((ax-0.031)/0.0148,(bp.y-1.668)/0.0088));float sk=1.0-smoothstep(0.9,1.0,er);
+    rc=mix(rc,vec3(0.006,0.007,0.009),sk);gRegR=mix(gRegR,0.06,sk);
+    float ir=length(vec2(ax-0.031,bp.y-1.668));float iris=1.0-smoothstep(0.0042,0.006,ir);float pu=1.0-smoothstep(0.0012,0.0022,ir);
+    gRegE+=uEye*uEyeI*(iris*(1.0-pu)*2.6+sk*0.06);
+    sm=max(sm,sLn(bp.y-1.606,0.0011)*step(ax,0.018));}
+   if(ax>0.06){float qr=length(vec2(bp.z-0.024,bp.y-1.662));sm=max(sm,sLn(qr-0.021,0.0016));
+    if(bp.x<0.0){float rg=smoothstep(0.0085,0.0105,qr)*(1.0-smoothstep(0.0155,0.0175,qr));rc=mix(rc,uLed,rg*step(0.01,uLedI));gRegE+=uLed*uLedI*rg;}}
+   if(bp.y>1.705)sm=max(sm,sLn(bp.z+0.01,0.0018));}
+  sm*=shell;scr*=shell;rc*=mix(1.0,0.16,sm);rc=mix(rc,vec3(0.06),scr);gRegR=mix(gRegR,0.75,max(sm,scr));gClear*=1.0-max(sm,scr);
+  if(bp.x>0.30&&bp.x<0.38&&bp.y>1.25&&bp.y<1.6){rc=mix(rc,uAcc,0.8);gRegE+=uAcc*0.7;}
+  vec2 tq=vec2(bp.x,bp.y-1.28-0.06*uShell);if(bp.z>0.07&&tq.y<0.045&&tq.y>-0.045&&abs(tq.x)<(0.045-tq.y)*0.55){rc=uAcc;gRegE+=uAcc*1.6;}}}
+diffuseColor.rgb*=rc;`;
+// шов: тёмная линия полушириной w (м) со сглаживанием по экрану; издалека гаснет, чтобы не рябить
+const CHAR_FN=`float sLn(float d,float w){float fw=max(fwidth(d),1e-5);return (1.0-smoothstep(w,w+fw*1.5,abs(d)))*(1.0-smoothstep(0.006,0.02,fw));}
+float scrw(vec2 q){return 1.0-smoothstep(0.0032,0.0042,length(q));}
+`;
+function charMat(L,joint){const Mat=L.android?T.MeshPhysicalMaterial:T.MeshStandardMaterial;const m=new Mat({color:0xffffff,roughness:0.8,metalness:0,skinning:true});if(L.android){m.clearcoat=1.0;m.clearcoatRoughness=0.1;}m.extensions={derivatives:true};
+ const u={uSkin:{value:C(L.skin||'#c99a78')},uTop:{value:C(L.top||'#222222')},uBot:{value:C(L.bot||'#1a1a1a')},uShoe:{value:C(L.shoe||'#111111')},uHair:{value:C(L.hair||'#111111')},uAcc:{value:C(L.acc||'#000000')},uLed:{value:C(L.led||'#000000')},uAnd:{value:L.android?1:0},uLedI:{value:L.led?2.6:0},
+  uShell:{value:L.shell?1:0},uJoint:{value:joint?1:0},uBald:{value:L.hair?0:1},uEye:{value:C(L.eye||'#79d6ff')},uEyeI:{value:L.eyeI===undefined?1:L.eyeI},uTime:GU.time};m.userData.u=u;
  m.onBeforeCompile=sh=>{Object.assign(sh.uniforms,u);sh.vertexShader='varying vec3 vBind;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vBind=position;');
-  sh.fragmentShader='uniform vec3 uSkin;uniform vec3 uTop;uniform vec3 uBot;uniform vec3 uShoe;uniform vec3 uHair;uniform vec3 uAcc;uniform vec3 uLed;uniform float uAnd;uniform float uLedI;uniform float uDark;varying vec3 vBind;vec3 gRegE;float gRegR;float gClear;\n'+sh.fragmentShader.replace('#include <color_fragment>',REGION).replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\n roughnessFactor=gRegR;').replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n totalEmissiveRadiance+=gRegE;').replace('#include <lights_physical_fragment>','#include <lights_physical_fragment>\n #ifdef CLEARCOAT\n material.clearcoat*=gClear;\n #endif');};
+  sh.fragmentShader='uniform vec3 uSkin;uniform vec3 uTop;uniform vec3 uBot;uniform vec3 uShoe;uniform vec3 uHair;uniform vec3 uAcc;uniform vec3 uLed;uniform float uAnd;uniform float uLedI;uniform float uShell;uniform float uJoint;uniform float uBald;uniform vec3 uEye;uniform float uEyeI;uniform float uTime;varying vec3 vBind;vec3 gRegE;float gRegR;float gClear;float gMetal;\n'+CHAR_FN+sh.fragmentShader.replace('#include <color_fragment>',REGION).replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\n roughnessFactor=gRegR;').replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\n metalnessFactor=gMetal;').replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n totalEmissiveRadiance+=gRegE;').replace('#include <lights_physical_fragment>','#include <lights_physical_fragment>\n #ifdef CLEARCOAT\n material.clearcoat*=gClear;\n #endif');};
  m.customProgramCacheKey=()=>'tumarChar'+(L.android?'A':'H');return m;}
 function holoMat(color){const m=new T.MeshBasicMaterial({color:C(color),transparent:true,opacity:0.55,blending:T.AdditiveBlending,depthWrite:false,skinning:true});
  m.onBeforeCompile=sh=>{sh.uniforms.uTime=GU.time;sh.fragmentShader='uniform float uTime;\n'+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n float sl=0.5+0.5*step(0.5,fract(gl_FragCoord.y*0.2-uTime*2.0));diffuseColor.a*=sl*(0.8+0.2*sin(uTime*9.0));');};m.customProgramCacheKey=()=>'tumarHolo';return m;}
@@ -269,7 +310,9 @@ function makeHuman(ctx,L,o,g,sc){const model=T.SkeletonUtils.clone(A.rpm.scene);
   let cap;if(L.hair==='takiya'){cap=new T.Mesh(new T.CylinderGeometry(0.094,0.1,0.075,28,1,true),new T.MeshStandardMaterial({map:takiyaTex,roughness:0.8,side:T.DoubleSide}));const top=new T.Mesh(new T.CircleGeometry(0.094,28),new T.MeshStandardMaterial({color:C('#1a1a1a'),roughness:0.8}));top.rotation.x=-Math.PI/2;top.position.y=0.0375;cap.add(top);
    const pos=new T.Vector3(0,1.805,0.018).applyMatrix4(mw);attachToBone(headBone,cap,pos,wq.clone().multiply(new T.Quaternion().setFromEuler(new T.Euler(-0.12,0,0))),ws.x);}
   else{const full=L.hairStyle!=='receding';cap=new T.Mesh(new T.SphereGeometry(full?0.102:0.1,30,14,0,Math.PI*2,0,Math.PI*(full?0.53:0.5)),new T.MeshStandardMaterial({color:C(L.hair),roughness:0.75,bumpMap:hairTex,bumpScale:0.006}));cap.scale.set(0.96,full?0.93:0.9,1.08);
-   const pos=new T.Vector3(0,full?1.742:1.738,full?0.016:0.008).applyMatrix4(mw);attachToBone(headBone,cap,pos,wq.clone().multiply(new T.Quaternion().setFromEuler(new T.Euler(full?-0.36:-0.55,0,0))),ws.x);}
+   const pos=new T.Vector3(0,full?1.742:1.738,full?0.016:0.008).applyMatrix4(mw);attachToBone(headBone,cap,pos,wq.clone().multiply(new T.Quaternion().setFromEuler(new T.Euler(full?-0.36:-0.55,0,0))),ws.x);
+   if(L.hairStyle==='long'){const lh=new T.Mesh(new T.CylinderGeometry(0.098,0.135,0.36,24,1,true,Math.PI*0.42,Math.PI*1.16),new T.MeshStandardMaterial({color:C(L.hair),roughness:0.75,bumpMap:hairTex,bumpScale:0.006,side:T.DoubleSide}));lh.castShadow=true;
+    attachToBone(headBone,lh,new T.Vector3(0,1.56,-0.012).applyMatrix4(mw),wq.clone(),ws.x);}}
   cap.castShadow=true;}
  if(window.LOOKS&&LOOKS.dress){try{LOOKS.dress({ctx,L,o,g,model,headBone,sc,morphs});}catch(e){console.warn('LOOKS.dress',e);}}
  const rig=animRig(model,A.rpmClips||[],o);const mixer=rig.mixer;g.userData.rig=rig;g.userData.play=rig.play;g.userData.animSpeed=rig.speedK;
@@ -283,10 +326,10 @@ function makeChar(ctx,look,o){o=o||{};const L=Object.assign({},typeof look==='st
  if(L.human)L.skin=L.skin&&L.skin.length===3&&typeof L.skin[0]==='number'?'#c99a78':L.skin;
  if(!A.ok||(!A.xbot&&!L.soldier)||(L.soldier&&!A.soldier)){const f=fallbackFigure(L);f.scale.setScalar(sc);g.add(f);g.userData.update=()=>{};return g;}
  const src=L.soldier?A.soldier:A.xbot;const model=T.SkeletonUtils.clone(src.scene);let mat=null;
- if(!L.soldier)mat=L.holo?holoMat(L.holoC):charMat(L);const jmat=(!L.soldier&&!L.holo&&L.android)?charMat(L,0.45):mat;
+ if(!L.soldier)mat=L.holo?holoMat(L.holoC):charMat(L);const jmat=(!L.soldier&&!L.holo&&L.android)?charMat(L,true):mat;
  const blk=L.topan?new T.MeshStandardMaterial({color:C('#08090b'),roughness:0.22,metalness:0.75,skinning:true}):null;const vis=L.topan?new T.MeshBasicMaterial({color:C('#ff2a1a').multiplyScalar(5),skinning:true,toneMapped:false}):null;
  const holoS=(L.soldier&&L.holo)?holoMat(L.holoC||'#ff9a3a'):null;
- model.traverse(m=>{if(m.isMesh){m.frustumCulled=false;m.castShadow=!L.holo;m.receiveShadow=!L.holo;if(L.soldier){if(holoS)m.material=holoS;else if(L.topan)m.material=/visor/i.test(m.name)?vis:blk;}else m.material=(m.name==='Mesh'?jmat:mat);}});
+ model.traverse(m=>{if(m.isMesh){m.frustumCulled=false;m.castShadow=!L.holo;m.receiveShadow=!L.holo;if(L.soldier){if(holoS)m.material=holoS;else if(L.topan)m.material=/visor/i.test(m.name)?vis:blk;}else m.material=(/Joints/.test(m.name)||m.name==='Mesh'?jmat:mat);}});// X Bot: Beta_Joints — суставы, Beta_Surface — корпус
  model.scale.setScalar(sc);if(L.led&&!L.holo&&!L.soldier){g.updateMatrixWorld(true);let head=null,body=null;model.traverse(b=>{if(b.isBone&&/Head$/.test(b.name))head=b;if(b.isSkinnedMesh&&b.name!=='Mesh')body=b;});if(head&&body){g.add(model);g.updateMatrixWorld(true);const wp=body.localToWorld(V(-0.1,1.664,0.028));head.worldToLocal(wp);const ws=new T.Vector3();head.getWorldScale(ws);const led=glow(L.led,0.045/ws.x,0.6);led.position.copy(wp);led.userData.noDepth=true;head.add(led);g.userData.led=led;g.remove(model);}}
  if(o.pose==='lie'){model.rotation.x=-Math.PI/2;model.position.y=0.12*sc;}if(o.pose==='sit')model.position.y=-0.46*sc;if(o.pose==='kneel')model.position.y=-0.78*sc;g.add(model);
  const rig=animRig(model,src.animations,o);const mixer=rig.mixer;g.userData.rig=rig;g.userData.play=rig.play;g.userData.animSpeed=rig.speedK;
@@ -879,7 +922,7 @@ function setQuality(q){if(!QUAL[q])return;qName=q;Q=QUAL[q];if(renderer){rendere
 function prebuild(list,cb){let i=0;const step=()=>{if(i>=list.length){cb&&cb();return;}build(list[i++]);setTimeout(step,30);};step();}
 function speak(who){if(!cur)return;for(const k in cur.byKey){const g=cur.byKey[k];const was=g.userData.speaking;g.userData.speaking=(k===who);if(k===who&&!was&&g.userData.rig&&!g.userData.pose&&!g.userData.walking&&Math.random()<0.55){g.userData.rig.once(Math.random()<0.6?'agree':'headShake',0.3,'idle');}}}
 function anchor(id){if(!cur||!cur.anchors||!cur.anchors[id])return null;const v=cur.anchors[id].clone().project(camera);if(v.z>1)return null;return {x:(v.x*0.5+0.5)*100,y:(-v.y*0.5+0.5)*100};}
-const lib={T,C,rng,hash,fbm,vn,ridge,sm,clamp,canvasTex,std,basic,emis,glow,box,cyl,textPlane,skyDome,range,ground,cityMat,bMats,streetGround,smogLayer,city,LOOK,crowdLook,makeChar,charMat,recolor,attachToBone,animRig,poseSit,rotBone,beam,aimBeam,flare,wetGround,wetFloor,rain,snow,dust,steam,fire,hemi,keyL,spotL,pointL,newCtx,finalize,V,glowTex,smokeTex,ringTex,windowTex,WIN,ornamentTex,concreteTex,woodTex,corrTex,rustTex,asphaltTex,hairTex,panelBlock,umbrella,spruceForest,droneSwarm,fireworks,A,GU,URLS,EXT,S,get Q(){return Q;},get qName(){return qName;},get camera(){return camera;},get renderer(){return renderer;}};
+const lib={T,C,rng,hash,fbm,vn,ridge,sm,clamp,canvasTex,std,basic,emis,glow,box,cyl,textPlane,skyDome,range,ground,cityMat,bMats,streetGround,smogLayer,city,LOOK,crowdLook,unitLook,UNIT,makeChar,charMat,recolor,attachToBone,animRig,poseSit,rotBone,beam,aimBeam,flare,wetGround,wetFloor,rain,snow,dust,steam,fire,hemi,keyL,spotL,pointL,newCtx,finalize,V,glowTex,smokeTex,ringTex,windowTex,WIN,ornamentTex,concreteTex,woodTex,corrTex,rustTex,asphaltTex,hairTex,panelBlock,umbrella,spruceForest,droneSwarm,fireworks,A,GU,URLS,EXT,S,get Q(){return Q;},get qName(){return qName;},get camera(){return camera;},get renderer(){return renderer;}};
 function whenShown(name){if(curName===name&&fade<0.6)return Promise.resolve(true);return new Promise(res=>{if(curName===name){setTimeout(()=>res(true),150);return;}showWait.push({name,res});});}
 return {lib,addScene(name,fn){S[name]=fn;delete built[name];},onLoad(f){EXT.push(f);},whenShown,get curName(){return curName;},setCamControl(f){camCtl=f;if(!f)camT=0;},get _cur(){return cur;},get _cam(){return camera;},init,load,show,prebuild,anchor,speak,setQuality,get quality(){return qName;},set onPerf(f){perfCb=f;},set freeze(v){freeze=v;},get freeze(){return freeze;},alarm:false,get scenes(){return Object.keys(S);},get ready(){return A.ok;}};
 })();

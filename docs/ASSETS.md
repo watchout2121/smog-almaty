@@ -4,7 +4,7 @@
 | Что | Откуда | Лицензия |
 |---|---|---|
 | Карта центра Алматы (`assets/geo/source-city-local.json` → `almaty.json`) | OpenStreetMap через проект farhat2222s/almaty60 | ODbL 1.0, нужна атрибуция |
-| Андроиды — X Bot, охрана — Vanguard (`assets/models/xbot.glb`, `soldier.glb`) | Mixamo, из примеров three.js | условия Mixamo / примеры three.js |
+| Андроиды — X Bot, охрана — Vanguard (`assets/models/xbot.glb`, `soldier.glb`) | Mixamo, из примеров three.js; облик андроидов (панели, швы, линзы, механика суставов) рисуется шейдером `REGION` в `src/art.js` | условия Mixamo / примеры three.js |
 | Люди — аватар Ready Player Me (`rpm.glb`) | примеры three.js | как в примерах three.js |
 | Машины (`assets/models/cars/*.glb`) | Kenney Car Kit | CC0 |
 | HDRI-окружения (`assets/env/*.hdr`, уменьшены до 512×256) | Poly Haven | CC0 |
@@ -24,7 +24,7 @@
 | [Futuristic City Assets](https://www.unrealengine.com/marketplace/en-US/product/futuristic-city-assets) | футуристичный город | Unreal | старая ссылка Marketplace, теперь на Fab; проверить лицензию и формат |
 | [KitBash3D Mini Kit: Neo City](https://kitbash3d.com/products/mini-kit-neo-city) | небольшой киберпанк-кит | FBX/OBJ/Blender и др. | бесплатный; проверить условия использования в играх; тяжёлый — нужна оптимизация |
 | [KitBash3D Modern Cities](https://kitbash3d.com/collections/modern-cities), [Neo Tokyo](https://kitbash3d.com/products/tokyo), [Neo Shanghai](https://kitbash3d.com/products/neo-shanghai) | кинематографичные наборы | FBX/OBJ/… | платно; по духу ближе к Detroit; очень тяжёлые |
-| [Humanoid Robot AI (Sketchfab)](https://sketchfab.com/3d-models/humanoid-robot-ai-e5de866d076646be8f20c610fefbbbcf) | модель робота-андроида | glTF с Sketchfab | страницу не удалось прочитать автоматически: проверить лицензию (CC BY — нужна атрибуция; Standard/Editorial — другие условия), наличие скелета и число полигонов |
+| [Humanoid Robot AI (Sketchfab)](https://sketchfab.com/3d-models/humanoid-robot-ai-e5de866d076646be8f20c610fefbbbcf) | модель робота-андроида, автор 3dUVpro, сделана генератором Meshy | glTF с Sketchfab | по API Sketchfab (28.09.2026): **CC BY** (нужна атрибуция), скачивается, ~176 тыс. треугольников, **анимаций нет** (скелета, судя по всему, тоже). В игру не взята: облик повторён шейдером на X Bot (панели, швы, чёрные суставы, линзы), анимации Mixamo сохранились. Если брать саму модель — риг в Mixamo, упрощение до ~30 тыс., строка в CREDITS.md |
 
 ## Как добавлять тяжёлые модели в браузерную версию
 1. Скачать под своим аккаунтом (Fab/Sketchfab/KitBash3D) и положить исходник вне репозитория.
@@ -33,7 +33,11 @@
 4. Персонажей с Mixamo-скелетом анимировать как сейчас: клипы X Bot ретаргетятся функцией `retarget()` в `src/art.js`.
 5. Одинаковые объекты (окна, фонари, машины) — `InstancedMesh`; следить за draw calls и режимом качества `low`.
 
+## Настольное приложение и тяжёлые ассеты
+С v3.1 игра — ещё и приложение Electron: файлы читаются с диска, поэтому ограничение «лёгкий вес для загрузки по сети» для приложения мягче (можно модели и текстуры тяжелее, 2–4K). Но лицензии не меняются: City Sample и City Sample Buildings разрешены только в продуктах на Unreal Engine, в Electron-версию их брать нельзя так же, как в браузерную.
+
 ## Если думать о переходе на Unreal Engine 5
+- **Железо владельца (28.09.2026):** RTX 4060 Laptop (8 ГБ), i7-13620H, 16 ГБ ОЗУ, ~177 ГБ свободно. Epic для City Sample рекомендует 12 ядер, **64 ГБ ОЗУ**, RTX 2080+ с 8 ГБ, SSD → на этом ноутбуке редактор с City Sample работать не будет.
 - **Плюсы:** можно использовать City Sample (целый город, MetaHuman, трафик), Lumen/Nanite, качество уровня Detroit.
 - **Минусы:** игра перестаёт быть ссылкой в браузере (нужна сборка под Windows, гигабайты); всю логику сюжета (`story.js`, `engine.js`) и систему прогулок придётся переписать (Blueprints/C++); карта OSM переносится только через импорт.
 - **Разумный путь:** браузерную версию развивать на glTF-ассетах, а UE5-прототип одной главы (например, гл. 4 в центре города) сделать отдельно и сравнить.

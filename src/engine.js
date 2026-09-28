@@ -21,7 +21,7 @@ function saveSet(){try{localStorage.setItem(SET_KEY,JSON.stringify(SET));}catch(
 
 // ---------------- audio ----------------
 // шины: master -> (music | sfx); домбра — синтез Карплуса–Стронга
-const MOOD={menu:'calm',apartment:'calm',tower:'dark',crime:'dark',mind:'dark',yurt:'calm',yurt_storm:'dark',station:'calm',station_in:'calm',bazaar:'dark',shop:'dark',road:'tense',dam_day:'calm',medeu:'fest',truck:'tense',tunnel:'tense',booth:'tense',city:'tense',city_drive:'tense',orchard:'calm',orchard_storm:'dark'};
+const MOOD={menu:'calm',apartment:'calm',tower:'dark',crime:'dark',mind:'dark',yurt:'calm',yurt_storm:'dark',station:'calm',station_in:'calm',bazaar:'dark',shop:'dark',road:'tense',dam_day:'calm',medeu:'fest',truck:'tense',tunnel:'tense',booth:'tense',city:'tense',city_drive:'tense',orchard:'calm',orchard_storm:'dark',core:'dark'};
 const NOTE={D3:146.83,E3:164.81,F3:174.61,G3:196,A3:220,C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,C5:523.25,D5:587.33};
 const AU={ctx:null,master:null,music:null,sfx:null,amb:null,rain:null,rev:null,cache:{},mood:'calm',nextPhrase:0,pulseT:0,timer:null,
  init(){if(this.ctx){if(this.ctx.state==='suspended')this.ctx.resume();return;}try{const AC=window.AudioContext||window.webkitAudioContext;const c=this.ctx=new AC();
@@ -232,6 +232,7 @@ async function boot(){
  $('#bNew').onclick=()=>{AU.init();startChapter(1,true);};
  $('#bCont').onclick=()=>{AU.init();startChapter(save.check.ch,false);};
  $('#bChap').onclick=()=>{AU.init();openChapters();};
+ if(window.SMOG_DESKTOP){$('#bQuit').hidden=false;$('#bQuit').onclick=()=>SMOG_DESKTOP.quit();}// настольное приложение (desktop/)
  $('#chBack').onclick=()=>{$('#chapters').hidden=true;};
  $('#endMenu').onclick=()=>openMenu();
  $('#snd').onclick=()=>{AU.init();const on=AU.toggle();$('#snd').textContent=on?'ЗВУК ВКЛ':'ЗВУК ВЫКЛ';};

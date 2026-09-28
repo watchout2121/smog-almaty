@@ -1,17 +1,57 @@
 {
   "name": "smog-almaty",
+  "productName": "SMOG Almaty 2049",
+  "version": "3.2.0",
   "private": true,
-  "description": "СМОГ · Алматы, 2049 — браузерная интерактивная драма на three.js",
+  "description": "СМОГ · Алматы, 2049 — интерактивная драма на three.js (браузер и приложение для Windows)",
+  "author": "watchout2121",
+  "main": "desktop/main.js",
   "scripts": {
     "build": "python3 tools/build.py",
     "build:offline": "python3 tools/build.py --offline",
     "serve": "python3 -m http.server 8770",
+    "desktop": "electron .",
+    "dist:win": "electron-builder --win",
     "test:boot": "node tools/tests/boot.js",
     "test:render": "node tools/tests/render.js",
     "test:play": "node tools/tests/playall.js",
-    "test:shots": "node tools/tests/walkshots.js"
+    "test:shots": "node tools/tests/walkshots.js",
+    "test:desktop": "node tools/tests/desktop.js"
+  },
+  "build": {
+    "appId": "io.github.watchout2121.smog",
+    "productName": "SMOG Almaty 2049",
+    "executableName": "SMOG",
+    "asar": false,
+    "directories": { "output": "dist/desktop" },
+    "files": [
+      "desktop/**",
+      "index.html",
+      "lib/**",
+      "src/**",
+      "assets/**",
+      "CREDITS.md",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "desktop/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "СМОГ · Алматы 2049",
+      "artifactName": "SMOG-Setup-${version}.${ext}"
+    },
+    "portable": { "artifactName": "SMOG-${version}-portable.${ext}" }
   },
   "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
     "playwright": "^1.56.0"
   }
 }
