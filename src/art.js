@@ -121,7 +121,7 @@ function cityMat(o){const m=new T.MeshStandardMaterial({color:C(o.base),roughnes
     vec3 wc=mix(vec3(0.55,0.78,1.0),vec3(1.0,0.64,0.34),step(h2,uWarm));wc*=0.25+0.75*cbh(id*3.1+vSeed);
     float band=0.75+0.25*smoothstep(0.2,0.8,f.y);
     totalEmissiveRadiance+=wc*lit*win*uI*band;
-    diffuseColor.rgb*=mix(1.0,0.25,win);roughnessFactor=mix(roughnessFactor,0.06,win*uGlass);metalnessFactor=mix(metalnessFactor,0.9,win*uGlass);
+    diffuseColor.rgb*=mix(1.0,0.25,win);roughnessFactor=mix(roughnessFactor,0.14,win*uGlass);metalnessFactor=mix(metalnessFactor,0.9,win*uGlass);
    }else{diffuseColor.rgb*=0.55;}
   }`);};
  m.customProgramCacheKey=()=>'tumarCity';return m;}
@@ -769,10 +769,21 @@ const GradeShader={uniforms:{tDiffuse:{value:null},time:{value:0},fade:{value:0}
  void main(){vec2 uv=vUv;if(rainAmt>0.){uv+=drops(vUv,time)*rainAmt;}
   vec2 d=uv-0.5;float r2=dot(d,d);vec2 off=d*0.0026*(0.4+r2*3.);
   vec3 c=vec3(texture2D(tDiffuse,uv+off).r,texture2D(tDiffuse,uv).g,texture2D(tDiffuse,uv-off).b);
-  c=aces(c*exposure);c=pow(c,vec3(1./2.2));
+  c=min(max(c,vec3(0.)),vec3(512.));c=aces(c*exposure);c=pow(c,vec3(1./2.2));
   float l=dot(c,vec3(.299,.587,.114));c=mix(c,c*vec3(0.9,1.0,1.1),smoothstep(.55,0.,l)*.55);c=mix(c,c*vec3(1.07,1.0,0.92),smoothstep(.45,1.,l)*.4);
   c=mix(vec3(l),c,1.05);c=(c-.5)*1.07+.5;c*=1.-r2*0.95;c+=(h(uv*vec2(1731.,977.)+fract(time*7.))-.5)*0.03;
   c=mix(c,vec3(l*1.1,l*0.22,l*0.18),alarm*0.35);c*=1.-fade;gl_FragColor=vec4(c,1.);}`};
+// Санитайзер HDR-кадра: на реальных видеокартах зеркальные блики переполняют half float (Inf),
+// а свечение (bloom) размазывает Inf/NaN в огромные чёрные прямоугольники. Режем Inf и NaN сразу после рендера.
+const SanitizeShader={uniforms:{tDiffuse:{value:null}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+ fragmentShader:`uniform sampler2D tDiffuse;varying vec2 vUv;
+ void main(){vec4 c=texture2D(tDiffuse,vUv);
+ #if __VERSION__ >= 300
+ bvec3 bad=isnan(c.rgb);if(bad.x||bad.y||bad.z)c.rgb=vec3(0.);
+ #else
+ if(!(c.r<=0.||c.r>=0.)||!(c.g<=0.||c.g>=0.)||!(c.b<=0.||c.b>=0.))c.rgb=vec3(0.);
+ #endif
+ c.rgb=min(max(c.rgb,vec3(0.)),vec3(256.));gl_FragColor=vec4(c.rgb,1.);}`};
 // ---- рендер-конвейер: HDR (half float) + MSAA, мягкие контактные тени (SSAO), боке, свечение, грейдинг, FXAA
 const hideForDepth=o=>o.isSprite||o.isPoints||o.isLine||o.isLensflare||o.userData.noDepth||o.userData.sky||(o.isMesh&&o.material&&!Array.isArray(o.material)&&o.material.transparent&&!o.material.alphaTest&&!o.userData.aoKeep);
 function hideSet(scene){const hid=[];if(scene)scene.traverse(o=>{if(o.visible&&hideForDepth(o)){o.visible=false;hid.push(o);}});return hid;}
@@ -792,7 +803,7 @@ class AOPass extends T.Pass{constructor(scene,camera){super();this.scene=scene;t
   const u=this.aoMat.uniforms;u.tNormal.value=this.nrt.texture;u.tDepth.value=this.nrt.depthTexture;u.tNoise.value=nt;u.kernel.value=K;
   this.blurMat=new T.ShaderMaterial({defines:Object.assign({},T.SSAOBlurShader.defines),uniforms:T.UniformsUtils.clone(T.SSAOBlurShader.uniforms),vertexShader:T.SSAOBlurShader.vertexShader,fragmentShader:T.SSAOBlurShader.fragmentShader});this.blurMat.uniforms.tDiffuse.value=this.art.texture;
   this.normalMat=new T.MeshNormalMaterial({skinning:true});this.normalMat.blending=T.NoBlending;
-  this.compMat=new T.ShaderMaterial({uniforms:{tDiffuse:{value:null},tAO:{value:this.brt.texture},strength:{value:0.55}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform sampler2D tDiffuse;uniform sampler2D tAO;uniform float strength;varying vec2 vUv;void main(){vec4 c=texture2D(tDiffuse,vUv);float ao=texture2D(tAO,vUv).r;gl_FragColor=vec4(c.rgb*mix(1.0,ao,strength),c.a);}'});
+  this.compMat=new T.ShaderMaterial({uniforms:{tDiffuse:{value:null},tAO:{value:this.brt.texture},strength:{value:0.55}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform sampler2D tDiffuse;uniform sampler2D tAO;uniform float strength;varying vec2 vUv;void main(){vec4 c=texture2D(tDiffuse,vUv);float ao=texture2D(tAO,vUv).r;if(!(ao<=0.0||ao>=0.0))ao=1.0;ao=clamp(ao,0.0,1.0);gl_FragColor=vec4(c.rgb*mix(1.0,ao,strength),c.a);}'});
   this.quad=new T.FullScreenQuad(null);this.cc=new T.Color();}
  setSize(w,h){const hw=Math.max(2,Math.round(w*0.5)),hh=Math.max(2,Math.round(h*0.5));this.nrt.setSize(hw,hh);this.art.setSize(hw,hh);this.brt.setSize(hw,hh);this.aoMat.uniforms.resolution.value.set(hw,hh);this.blurMat.uniforms.resolution.value.set(hw,hh);}
  render(r,writeBuffer,readBuffer){const cam=this.camera;const hid=hideSet(this.scene);r.getClearColor(this.cc);const ca=r.getClearAlpha();
@@ -800,15 +811,15 @@ class AOPass extends T.Pass{constructor(scene,camera){super();this.scene=scene;t
   const u=this.aoMat.uniforms;u.cameraNear.value=cam.near;u.cameraFar.value=cam.far;u.cameraProjectionMatrix.value.copy(cam.projectionMatrix);u.cameraInverseProjectionMatrix.value.copy(cam.projectionMatrixInverse);u.kernelRadius.value=this.radius;const span=cam.far-cam.near;u.minDistance.value=this.minD/span;u.maxDistance.value=this.maxD/span;
   this.quad.material=this.aoMat;r.setRenderTarget(this.art);this.quad.render(r);this.quad.material=this.blurMat;r.setRenderTarget(this.brt);this.quad.render(r);
   this.compMat.uniforms.tDiffuse.value=readBuffer.texture;this.compMat.uniforms.strength.value=this.strength;this.quad.material=this.compMat;r.setRenderTarget(this.renderToScreen?null:writeBuffer);this.quad.render(r);}}
-let aoPass=null,fxaa=null;
+let aoPass=null,fxaa=null,sanPass=null,san2=null;
 function init(el){canvasEl=el;renderer=new T.WebGLRenderer({canvas:el,antialias:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
  camera=new T.PerspectiveCamera(45,1,0.1,9000);pmrem=new T.PMREMGenerator(renderer);pmrem.compileEquirectangularShader();
  if(T.EffectComposer&&T.UnrealBloomPass){const hf=new T.WebGLRenderTarget(4,4,{minFilter:T.LinearFilter,magFilter:T.LinearFilter,format:T.RGBAFormat,type:T.HalfFloatType,stencilBuffer:false});
-  composer=new T.EffectComposer(renderer,hf);composer.setPixelRatio(renderer.getPixelRatio());renderPass=new MSRenderPass(new T.Scene(),camera);renderPass.setMS(Q.msaa);composer.addPass(renderPass);
+  composer=new T.EffectComposer(renderer,hf);composer.setPixelRatio(renderer.getPixelRatio());renderPass=new MSRenderPass(new T.Scene(),camera);renderPass.setMS(Q.msaa);composer.addPass(renderPass);sanPass=new T.ShaderPass(SanitizeShader);composer.addPass(sanPass);
   if(T.SSAOShader){aoPass=new AOPass(new T.Scene(),camera);aoPass.enabled=!!Q.ao;composer.addPass(aoPass);}
   if(T.BokehPass){bokeh=new T.BokehPass(new T.Scene(),camera,{focus:8,aperture:0.00035,maxblur:0.008,width:512,height:512});bokeh.materialDepth.skinning=true;const br=bokeh.render.bind(bokeh);bokeh.render=function(r,w,rb,dt,m){const hid=hideSet(cur&&cur.scene);br(r,w,rb,dt,m);hid.forEach(o=>o.visible=true);};composer.addPass(bokeh);bokeh.enabled=Q.dof;}
-  bloom=new T.UnrealBloomPass(new T.Vector2(512,512),Q.bloom,0.5,1.0);[bloom.renderTargetBright,...bloom.renderTargetsHorizontal,...bloom.renderTargetsVertical].forEach(t=>{t.texture.type=T.HalfFloatType;});composer.addPass(bloom);
+  san2=new T.ShaderPass(SanitizeShader);san2.enabled=!!(Q.ao||Q.dof);composer.addPass(san2);bloom=new T.UnrealBloomPass(new T.Vector2(512,512),Q.bloom,0.5,1.0);[bloom.renderTargetBright,...bloom.renderTargetsHorizontal,...bloom.renderTargetsVertical].forEach(t=>{t.texture.type=T.HalfFloatType;});composer.addPass(bloom);
   grade=new T.ShaderPass(GradeShader);composer.addPass(grade);if(T.FXAAShader){fxaa=new T.ShaderPass(T.FXAAShader);fxaa.enabled=!!Q.fxaa;composer.addPass(fxaa);}}
  else{renderer.toneMapping=T.ACESFilmicToneMapping;renderer.outputEncoding=T.sRGBEncoding;}
  resize();window.addEventListener('resize',resize);requestAnimationFrame(loop);}
@@ -863,7 +874,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(0.05,clock.getDelt
  else if(cur){renderer.render(cur.scene,camera);canvasEl.style.opacity=1-fade;}
  // perf monitor
  perfT+=dt;if(perfT>1.5&&fade<0.05){perfAcc+=dt;perfN++;if(perfN>=90){const avg=perfAcc/perfN;perfReset();if(avg>0.042&&perfCb){const nq=qName==='high'?'medium':qName==='medium'?'low':null;if(nq)perfCb(nq);}}}}
-function setQuality(q){if(!QUAL[q])return;qName=q;Q=QUAL[q];if(renderer){renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));resize();renderer.shadowMap.enabled=!!Q.shadow;if(bokeh)bokeh.enabled=Q.dof;if(bloom)bloom.strength=Q.bloom;if(aoPass)aoPass.enabled=!!Q.ao;if(fxaa)fxaa.enabled=!!Q.fxaa;if(renderPass&&renderPass.setMS)renderPass.setMS(Q.msaa);}
+function setQuality(q){if(!QUAL[q])return;qName=q;Q=QUAL[q];if(renderer){renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));resize();renderer.shadowMap.enabled=!!Q.shadow;if(bokeh)bokeh.enabled=Q.dof;if(bloom)bloom.strength=Q.bloom;if(aoPass)aoPass.enabled=!!Q.ao;if(fxaa)fxaa.enabled=!!Q.fxaa;if(san2)san2.enabled=!!(Q.ao||Q.dof);if(renderPass&&renderPass.setMS)renderPass.setMS(Q.msaa);}
  const keep=curName;built={};curName='';if(keep&&cur){cur=null;show(keep);}}
 function prebuild(list,cb){let i=0;const step=()=>{if(i>=list.length){cb&&cb();return;}build(list[i++]);setTimeout(step,30);};step();}
 function speak(who){if(!cur)return;for(const k in cur.byKey){const g=cur.byKey[k];const was=g.userData.speaking;g.userData.speaking=(k===who);if(k===who&&!was&&g.userData.rig&&!g.userData.pose&&!g.userData.walking&&Math.random()<0.55){g.userData.rig.once(Math.random()<0.6?'agree':'headShake',0.3,'idle');}}}
