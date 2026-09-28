@@ -18,7 +18,8 @@ head_part, body_part = head[:cut], head[cut:]
 META = ('<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
         '<meta name="description" content="СМОГ · Алматы, 2049. Интерактивная драма: смог, пробки, андроиды и выбор.">\n'
         '<meta name="theme-color" content="#04070b">\n')
-ver = str(int(os.path.getmtime('src/engine.js')))
+import hashlib
+ver = hashlib.sha1(''.join(rd('src/' + f) for f in SRC).encode()).hexdigest()[:10]  # меняется при любой правке src → браузер не берёт старый файл из кэша
 scripts = ''.join(f'<script src="lib/{f}"></script>\n' for f in LIBS) + ''.join(f'<script src="src/{f}?v={ver}"></script>\n' for f in SRC)
 index = '<!doctype html>\n<html lang="ru">\n<head>\n' + META + head_part + '</head>\n<body>\n' + body_part + scripts + '</body>\n</html>\n'
 open('index.html', 'w', encoding='utf-8').write(index)
