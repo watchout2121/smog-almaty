@@ -1,0 +1,40 @@
+# Сборка приложения для Windows и загрузка в релиз GitHub.
+# Запускается сама при push метки vX.Y.Z или вручную (Actions → Windows release → Run workflow, поле tag).
+name: Windows release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Метка релиза, например v3.2.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Сборка установщика и переносной версии
+        run: npx electron-builder --win --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Файлы в релиз
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          fail_on_unmatched_files: true
+          files: |
+            dist/desktop/SMOG-Setup-*.exe
+            dist/desktop/SMOG-*-portable.exe

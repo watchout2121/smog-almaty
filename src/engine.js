@@ -233,6 +233,7 @@ async function boot(){
  $('#bCont').onclick=()=>{AU.init();startChapter(save.check.ch,false);};
  $('#bChap').onclick=()=>{AU.init();openChapters();};
  if(window.SMOG_DESKTOP){$('#bQuit').hidden=false;$('#bQuit').onclick=()=>SMOG_DESKTOP.quit();}// настольное приложение (desktop/)
+ else{$('#bDl').hidden=false;$('#bDl').onclick=()=>window.open('https://github.com/watchout2121/smog-almaty/releases/latest','_blank','noopener');}// на сайте: ссылка на установщик
  $('#chBack').onclick=()=>{$('#chapters').hidden=true;};
  $('#endMenu').onclick=()=>openMenu();
  $('#snd').onclick=()=>{AU.init();const on=AU.toggle();$('#snd').textContent=on?'ЗВУК ВКЛ':'ЗВУК ВЫКЛ';};
