@@ -1,7 +1,7 @@
 {
   "name": "smog-almaty",
   "productName": "SMOG Almaty 2049",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "private": true,
   "description": "СМОГ · Алматы, 2049 — интерактивная драма на three.js (браузер и приложение для Windows)",
   "author": "watchout2121",
